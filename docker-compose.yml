@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: immigration-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=immigration_advisor
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:6
+    container_name: immigration-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  redis:
+    image: redis:7
+    container_name: immigration-redis
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: immigration-api
+    depends_on:
+      - postgres
+      - mongodb
+      - redis
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/immigration_advisor
+      - MONGODB_URL=mongodb://mongodb:27017/immigration_advisor
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+
+  # Uncomment when frontend is ready
+  # web:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: immigration-web
+  #   depends_on:
+  #     - api
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./frontend:/app
+
+volumes:
+  postgres_data:
+  mongodb_data:
