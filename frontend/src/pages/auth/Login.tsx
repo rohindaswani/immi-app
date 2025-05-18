@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   Typography, 
   Box, 
@@ -8,15 +8,17 @@ import {
   Paper,
   Link,
   Grid,
-  Alert
+  Alert,
+  Divider
 } from '@mui/material';
 import { useFormik } from 'formik';
 import * as yup from 'yup';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { RootState } from '../../store';
 import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authSlice';
+import GoogleLoginButton from '../../components/auth/GoogleLoginButton';
 
 const validationSchema = yup.object({
   email: yup
@@ -32,7 +34,18 @@ const validationSchema = yup.object({
 const Login: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error } = useSelector((state: RootState) => state.auth);
+  const location = useLocation();
+  const { loading, error, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  
+  // Get the destination from location state, or default to dashboard
+  const from = (location.state as any)?.from || '/dashboard';
+  
+  // If already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
 
   const formik = useFormik({
     initialValues: {
@@ -44,7 +57,7 @@ const Login: React.FC = () => {
       try {
         dispatch(loginStart());
         
-        // This would make an actual API call in production
+        // TODO: Replace with actual API call
         // For now, we'll simulate a successful login
         setTimeout(() => {
           dispatch(loginSuccess({
@@ -56,7 +69,7 @@ const Login: React.FC = () => {
               is_active: true,
               email_verified: true
             },
-            token: 'fake-token-123'
+            authMethod: 'password'
           }));
           navigate('/dashboard');
         }, 1000);
@@ -87,7 +100,19 @@ const Login: React.FC = () => {
             </Alert>
           )}
           
-          <Box component="form" onSubmit={formik.handleSubmit} noValidate sx={{ mt: 1 }}>
+          <Box sx={{ mb: 3 }}>
+            <GoogleLoginButton fullWidth variant="contained" />
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+            <Divider sx={{ flexGrow: 1 }} />
+            <Typography variant="body2" color="text.secondary" sx={{ mx: 2 }}>
+              OR
+            </Typography>
+            <Divider sx={{ flexGrow: 1 }} />
+          </Box>
+          
+          <Box component="form" onSubmit={formik.handleSubmit} noValidate>
             <TextField
               margin="normal"
               required
