@@ -11,6 +11,15 @@ class Settings:
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Immigration Advisor"
     
+    # Base URL
+    SERVER_HOST: str = "localhost"
+    SERVER_PORT: int = 8000
+    SERVER_PROTOCOL: str = "http"
+    
+    @property
+    def SERVER_URL(self) -> str:
+        return f"{self.SERVER_PROTOCOL}://{self.SERVER_HOST}:{self.SERVER_PORT}"
+    
     # SECURITY
     SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
     ALGORITHM: str = "HS256"
@@ -49,6 +58,27 @@ class Settings:
     # SERVICES
     PINECONE_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
+    
+    # GOOGLE OAUTH
+    GOOGLE_CLIENT_ID: Optional[str] = os.getenv("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: Optional[str] = os.getenv("GOOGLE_CLIENT_SECRET")
+    GOOGLE_REDIRECT_URI: str = "/auth/google/callback"
+    
+    @property
+    def GOOGLE_AUTHORIZE_URL(self) -> str:
+        return "https://accounts.google.com/o/oauth2/auth"
+    
+    @property
+    def GOOGLE_TOKEN_URL(self) -> str:
+        return "https://oauth2.googleapis.com/token"
+    
+    @property
+    def GOOGLE_USER_INFO_URL(self) -> str:
+        return "https://www.googleapis.com/oauth2/v3/userinfo"
+    
+    @property
+    def GOOGLE_CALLBACK_URL(self) -> str:
+        return f"{self.SERVER_URL}{self.GOOGLE_REDIRECT_URI}"
 
 
 settings = Settings()

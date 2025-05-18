@@ -1,27 +1,25 @@
 import axios from 'axios';
 
-const BASE_URL = '/api/v1';
+const BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}`;
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important for sending/receiving cookies
 });
 
-// Add request interceptor to include auth token
+// Add request interceptor for API requests
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // No need to add Authorization header as we're using HTTP-only cookies
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Add response interceptor to handle common errors
+// Add response interceptor to handle token refresh
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -32,17 +30,20 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       
       try {
-        // This would call a refresh token endpoint in a real implementation
-        // const refreshToken = localStorage.getItem('refreshToken');
-        // const response = await authApi.refreshToken(refreshToken);
-        // localStorage.setItem('token', response.data.access_token);
-        // originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
-        // return apiClient(originalRequest);
+        // Call the token refresh endpoint
+        await axios.post(`${BASE_URL}/auth/token/refresh`, {}, { 
+          withCredentials: true 
+        });
+        
+        // Retry the original request
+        return apiClient(originalRequest);
       } catch (err) {
-        // If refresh token fails, log out the user
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+        // If refresh token fails, redirect to login
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('authMethod');
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
     }
     

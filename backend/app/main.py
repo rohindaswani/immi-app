@@ -24,11 +24,21 @@ app = FastAPI(
     redoc_url=f"{settings.API_V1_STR}/redoc",
 )
 
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["Set-Cookie"],
+)
+
 # Set up middlewares
 setup_middleware(app)
 
 # Include API router
-app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(api_router, prefix="")
 
 # Health check endpoint
 @app.get("/health")
