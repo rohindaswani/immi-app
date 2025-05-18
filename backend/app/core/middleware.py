@@ -72,17 +72,6 @@ def setup_middleware(app: FastAPI) -> None:
     """
     Set up all middleware for the application.
     """
-    # CORS middleware for cross-origin requests
-    # Use hardcoded values to avoid any parsing issues
-    origins = ["http://localhost:3000", "http://localhost:8000", "*"]
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    
     # Trusted host middleware - hardcoded for simplicity
     allowed_hosts = ["localhost", "127.0.0.1", "*"]
     app.add_middleware(
