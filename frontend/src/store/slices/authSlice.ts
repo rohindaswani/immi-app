@@ -1,28 +1,41 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface User {
+export interface User {
   user_id: string;
   email: string;
-  first_name?: string;
-  last_name?: string;
+  first_name?: string | null;
+  last_name?: string | null;
   is_active: boolean;
   email_verified: boolean;
 }
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
+  authMethod: 'google' | 'password' | null;
 }
 
+// Get user data from sessionStorage (if available)
+const getUserFromSession = (): User | null => {
+  const userStr = sessionStorage.getItem('user');
+  if (userStr) {
+    try {
+      return JSON.parse(userStr) as User;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 const initialState: AuthState = {
-  user: null,
-  token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
+  user: getUserFromSession(),
+  isAuthenticated: !!getUserFromSession(),
   loading: false,
   error: null,
+  authMethod: sessionStorage.getItem('authMethod') as 'google' | 'password' | null
 };
 
 const authSlice = createSlice({
@@ -33,13 +46,16 @@ const authSlice = createSlice({
       state.loading = true;
       state.error = null;
     },
-    loginSuccess: (state, action: PayloadAction<{ user: User; token: string }>) => {
+    loginSuccess: (state, action: PayloadAction<{ user: User; token?: string; authMethod?: 'google' | 'password' }>) => {
       state.user = action.payload.user;
-      state.token = action.payload.token;
       state.isAuthenticated = true;
       state.loading = false;
       state.error = null;
-      localStorage.setItem('token', action.payload.token);
+      state.authMethod = action.payload.authMethod || 'password';
+      
+      // Store user in sessionStorage (not the token - it's in HTTP-only cookies)
+      sessionStorage.setItem('user', JSON.stringify(action.payload.user));
+      sessionStorage.setItem('authMethod', state.authMethod);
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;
@@ -47,11 +63,14 @@ const authSlice = createSlice({
     },
     logout: (state) => {
       state.user = null;
-      state.token = null;
       state.isAuthenticated = false;
       state.loading = false;
       state.error = null;
-      localStorage.removeItem('token');
+      state.authMethod = null;
+      
+      // Clear session storage
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('authMethod');
     },
     updateUser: (state, action: PayloadAction<Partial<User>>) => {
       if (state.user) {
@@ -59,6 +78,8 @@ const authSlice = createSlice({
           ...state.user,
           ...action.payload,
         };
+        // Update session storage
+        sessionStorage.setItem('user', JSON.stringify(state.user));
       }
     },
   },

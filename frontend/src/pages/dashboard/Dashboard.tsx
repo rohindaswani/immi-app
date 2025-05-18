@@ -16,11 +16,15 @@ import {
   Chip,
   Alert
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EventIcon from '@mui/icons-material/Event';
+import PersonIcon from '@mui/icons-material/Person';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   // In a real implementation, this data would come from API calls
   const upcomingDeadlines = [
     {
@@ -78,9 +82,21 @@ const Dashboard: React.FC = () => {
 
   return (
     <Container maxWidth="lg">
-      <Typography variant="h4" component="h1" gutterBottom>
-        Dashboard
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1">
+          Dashboard
+        </Typography>
+        
+        <Box>
+          <Button 
+            variant="contained" 
+            startIcon={<PersonIcon />} 
+            onClick={() => navigate('/profiles')}
+          >
+            My Profiles
+          </Button>
+        </Box>
+      </Box>
       
       <Typography variant="subtitle1" color="text.secondary" paragraph>
         Welcome back! Here's an overview of your immigration status and important items.

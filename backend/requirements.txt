@@ -13,7 +13,10 @@ celery==5.3.4
 langchain==0.0.330
 pinecone-client==2.2.4
 pytest==7.4.3
-httpx==0.25.1
+# httpx constraint is set by fastapi-sso which requires httpx<0.24.0 and >=0.23.0
+httpx==0.23.3
 python-dotenv==1.0.0
 email-validator==2.1.0
 boto3==1.28.78
+fastapi-sso==0.7.0
+itsdangerous==2.1.2
