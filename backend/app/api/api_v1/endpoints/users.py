@@ -1,30 +1,55 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
 
 from app.schemas.user import UserResponse, UserUpdate
 from app.schemas.user_settings import UserSettings
 from app.services.user import UserService
+from app.core.security import get_current_user
+from app.db.postgres import get_db
+from app.db.models import User
 
 router = APIRouter()
 
-user_service = UserService()
-
 @router.get("/me", response_model=UserResponse)
-async def get_current_user():
+async def get_current_user_info(
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Get current user information.
+    TEMPORARY: Returns test data for development.
     """
-    # This will be implemented once the user service is created
-    # return await user_service.get_current_user()
+    # TEMPORARY: Return test user data for development/testing
+    # TODO: Remove this and uncomment the real database query below
+    return UserResponse(
+        user_id=current_user_id,
+        email="test@example.com",
+        first_name="Test",
+        last_name="User",
+        is_active=True,
+        email_verified=True
+    )
     
-    # Placeholder response
-    return {
-        "user_id": "example-user-id",
-        "email": "user@example.com",
-        "first_name": "John",
-        "last_name": "Doe",
-        "is_active": True,
-        "email_verified": True
-    }
+    # Real database query (commented out for testing):
+    """
+    # Get user from database
+    user = db.query(User).filter(User.user_id == current_user_id).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    return UserResponse(
+        user_id=str(user.user_id),
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        is_active=user.is_active,
+        email_verified=user.email_verified
+    )
+    """
 
 
 @router.put("/me", response_model=UserResponse)

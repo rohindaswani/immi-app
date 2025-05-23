@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Immigration Advisor"
+
+
+    GOOGLE_CLIENT_SECRET: str = "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"
+    GOOGLE_REDIRECT_URI: str = "/api/v1/auth/google/callback"
     
     # SECURITY
     SECRET_KEY: str = secrets.token_urlsafe(32)

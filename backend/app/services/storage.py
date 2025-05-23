@@ -1,16 +1,19 @@
 import boto3
 import uuid
 import os
+import shutil
 from datetime import datetime, timedelta
 from typing import BinaryIO, Optional, Tuple, List
 from fastapi import UploadFile, HTTPException
 from botocore.exceptions import ClientError
+from pathlib import Path
 
 from app.core.config import settings
 
 class StorageService:
     """
     Service for handling secure file storage operations.
+    Supports both local storage (for development) and S3 (for production).
     """
     
     def __init__(self):
@@ -19,14 +22,19 @@ class StorageService:
         """
         self.s3 = None
         self.bucket_name = settings.STORAGE_BUCKET_NAME
-        
-        if all([
+        self.use_local_storage = not all([
             settings.STORAGE_ACCESS_KEY,
             settings.STORAGE_SECRET_KEY,
             settings.STORAGE_REGION,
-            settings.STORAGE_ENDPOINT,
             settings.STORAGE_BUCKET_NAME
-        ]):
+        ])
+        
+        if self.use_local_storage:
+            # Set up local storage directory
+            self.local_storage_path = Path("uploads")
+            self.local_storage_path.mkdir(exist_ok=True)
+        else:
+            # Set up S3 client
             self.s3 = boto3.client(
                 's3',
                 aws_access_key_id=settings.STORAGE_ACCESS_KEY,
@@ -54,12 +62,6 @@ class StorageService:
         Returns:
             Tuple containing the file key and full URL
         """
-        if not self.s3:
-            raise HTTPException(
-                status_code=500, 
-                detail="Storage service not configured properly"
-            )
-        
         # Create a unique file name
         file_extension = os.path.splitext(file.filename)[1] if file.filename else ""
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -71,36 +73,68 @@ class StorageService:
             key = f"{folder}/{timestamp}_{file_uuid}{file_extension}"
         
         # Prepare metadata
-        s3_metadata = {}
+        file_metadata = {}
         if metadata:
-            # S3 metadata keys must be lowercase and cannot contain special characters
-            s3_metadata = {k.lower().replace("-", "_"): str(v) for k, v in metadata.items()}
+            file_metadata = {k.lower().replace("-", "_"): str(v) for k, v in metadata.items()}
         
         # Add some standard metadata
-        s3_metadata.update({
+        file_metadata.update({
             "original_filename": file.filename or "unknown",
             "content_type": file.content_type or "application/octet-stream",
             "upload_timestamp": timestamp
         })
         
         try:
-            # Upload to S3
-            await self._upload_fileobj(
-                file.file, 
-                key, 
-                file.content_type, 
-                s3_metadata
-            )
-            
-            # Generate the URL
-            url = f"{settings.STORAGE_ENDPOINT}/{self.bucket_name}/{key}"
-            
-            return key, url
+            if self.use_local_storage:
+                # Local storage implementation
+                return await self._upload_local(file, key, file_metadata)
+            else:
+                # S3 implementation
+                await self._upload_fileobj(
+                    file.file, 
+                    key, 
+                    file.content_type, 
+                    file_metadata
+                )
+                
+                # Generate the URL
+                url = f"{settings.STORAGE_ENDPOINT}/{self.bucket_name}/{key}"
+                return key, url
+                
         except Exception as e:
             raise HTTPException(
                 status_code=500,
                 detail=f"Error uploading file: {str(e)}"
             )
+    
+    async def _upload_local(
+        self, 
+        file: UploadFile, 
+        key: str, 
+        metadata: dict
+    ) -> Tuple[str, str]:
+        """
+        Upload file to local storage.
+        """
+        # Create directory structure
+        file_path = self.local_storage_path / key
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Write file
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Store metadata as a separate JSON file
+        metadata_path = file_path.with_suffix(f"{file_path.suffix}.meta")
+        import json
+        with open(metadata_path, "w") as meta_file:
+            json.dump(metadata, meta_file)
+        
+        # Generate local URL
+        url = f"http://localhost:8000/files/{key}"
+        
+        return key, url
     
     async def _upload_fileobj(
         self, 
@@ -157,6 +191,10 @@ class StorageService:
         Returns:
             Presigned URL for accessing the file
         """
+        if self.use_local_storage:
+            # For local storage, return a simple URL
+            return f"http://localhost:8000/files/{key}"
+            
         if not self.s3:
             raise HTTPException(
                 status_code=500, 
@@ -194,6 +232,24 @@ class StorageService:
         Returns:
             True if successful, False otherwise
         """
+        if self.use_local_storage:
+            try:
+                file_path = self.local_storage_path / key
+                if file_path.exists():
+                    file_path.unlink()
+                
+                # Also delete metadata file if it exists
+                metadata_path = file_path.with_suffix(f"{file_path.suffix}.meta")
+                if metadata_path.exists():
+                    metadata_path.unlink()
+                
+                return True
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error deleting local file: {str(e)}"
+                )
+        
         if not self.s3:
             raise HTTPException(
                 status_code=500, 

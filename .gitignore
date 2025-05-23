@@ -27,6 +27,10 @@ htmlcov/
 .coverage
 .coverage.*
 
+# Uploaded files (sensitive documents)
+backend/uploads/
+uploads/
+
 # Frontend
 node_modules/
 /frontend/dist
@@ -52,3 +56,5 @@ coverage/
 # Docker
 .docker/
 docker-compose.override.yml
+
+**/.claude/settings.local.json

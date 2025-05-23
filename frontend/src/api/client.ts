@@ -13,7 +13,7 @@ const apiClient = axios.create({
 // Add request interceptor for API requests
 apiClient.interceptors.request.use(
   (config) => {
-    // No need to add Authorization header as we're using HTTP-only cookies
+    // Authentication is handled via HTTP-only cookies
     return config;
   },
   (error) => Promise.reject(error)
