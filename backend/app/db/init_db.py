@@ -32,6 +32,12 @@ def init_db(db: Session) -> None:
         create_admin_user(db)
     except Exception as e:
         logger.error(f"Error creating admin user: {e}")
+    
+    # Create test user for development
+    try:
+        create_test_user(db)
+    except Exception as e:
+        logger.error(f"Error creating test user: {e}")
 
 
 def create_immigration_statuses(db: Session) -> None:
@@ -217,43 +223,100 @@ def create_admin_user(db: Session) -> None:
     """
     Create an admin user for development purposes.
     """
-    # Check if admin user already exists
-    admin_email = "admin@example.com"
-    existing = db.query(User).filter(User.email == admin_email).first()
-    if existing:
-        logger.info("Admin user already exists, skipping creation")
-        return
-    
-    # Create admin user
-    admin_user = User(
-        user_id=uuid.uuid4(),
-        email=admin_email,
-        password_hash=get_password_hash("adminpassword"),  # DO NOT USE IN PRODUCTION
-        first_name="Admin",
-        last_name="User",
-        is_active=True,
-        email_verified=True
-    )
-    db.add(admin_user)
-    db.commit()
-    db.refresh(admin_user)
-    
-    # Create user settings
-    admin_settings = UserSettings(
-        setting_id=uuid.uuid4(),
-        user_id=admin_user.user_id,
-        notification_preferences={
-            "email": True,
-            "in_app": True
-        },
-        ui_preferences={
-            "theme": "light",
-            "language": "en"
-        },
-        time_zone="America/New_York",
-        language_preference="en"
-    )
-    db.add(admin_settings)
-    db.commit()
-    
-    logger.info("Created admin user with settings")
+    try:
+        # Check if admin user already exists
+        admin_email = "admin@example.com"
+        existing = db.query(User).filter(User.email == admin_email).first()
+        if existing:
+            logger.info("Admin user already exists, skipping creation")
+            return
+        
+        # Create admin user with a simple password hash (for development only)
+        admin_user = User(
+            user_id=uuid.uuid4(),
+            email=admin_email,
+            password_hash="temp_password_hash",  # Simple placeholder for development
+            first_name="Admin",
+            last_name="User",
+            is_active=True,
+            email_verified=True
+        )
+        db.add(admin_user)
+        db.commit()
+        db.refresh(admin_user)
+        
+        # Create user settings
+        admin_settings = UserSettings(
+            setting_id=uuid.uuid4(),
+            user_id=admin_user.user_id,
+            notification_preferences={
+                "email": True,
+                "in_app": True
+            },
+            ui_preferences={
+                "theme": "light",
+                "language": "en"
+            },
+            time_zone="America/New_York",
+            language_preference="en"
+        )
+        db.add(admin_settings)
+        db.commit()
+        
+        logger.info("Created admin user with settings")
+    except Exception as e:
+        logger.error(f"Failed to create admin user: {e}")
+        # Don't re-raise since this is not critical for testing
+
+
+def create_test_user(db: Session) -> None:
+    """
+    Create a test user for development purposes.
+    """
+    try:
+        # Test user ID that matches the one used in security.py
+        test_user_id = "12345678-1234-1234-1234-123456789abc"
+        test_email = "test@example.com"
+        
+        # Check if test user already exists
+        existing = db.query(User).filter(User.user_id == test_user_id).first()
+        if existing:
+            logger.info("Test user already exists, skipping creation")
+            return
+        
+        # Create test user
+        test_user = User(
+            user_id=test_user_id,
+            email=test_email,
+            password_hash="test_password_hash",  # Simple placeholder for development
+            first_name="Test",
+            last_name="User",
+            is_active=True,
+            email_verified=True
+        )
+        db.add(test_user)
+        db.commit()
+        db.refresh(test_user)
+        
+        # Create user settings
+        test_settings = UserSettings(
+            setting_id=uuid.uuid4(),
+            user_id=test_user.user_id,
+            notification_preferences={
+                "email": True,
+                "in_app": True
+            },
+            ui_preferences={
+                "theme": "light",
+                "language": "en"
+            },
+            time_zone="America/New_York",
+            language_preference="en"
+        )
+        db.add(test_settings)
+        db.commit()
+        
+        logger.info("Created test user with settings")
+    except Exception as e:
+        logger.error(f"Failed to create test user: {e}")
+        # Don't re-raise since this is not critical for testing

@@ -113,9 +113,7 @@ class ImmigrationProfile(Base):
     passport_country = relationship("Country", foreign_keys=[passport_country_id])
     dependents = relationship("ImmigrationProfile", 
                              foreign_keys=[primary_beneficiary_id],
-                             backref=relationship("ImmigrationProfile", 
-                                                remote_side=[profile_id],
-                                                foreign_keys=[primary_beneficiary_id]))
+                             remote_side=[profile_id])
     documents = relationship("DocumentMetadata", back_populates="profile")
     travel_history = relationship("TravelHistory", back_populates="profile")
     address_history = relationship("AddressHistory", back_populates="profile")

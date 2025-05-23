@@ -12,6 +12,7 @@ export const checkAuthentication = async (): Promise<{
   try {
     // First check session storage
     const userStr = sessionStorage.getItem('user');
+    
     if (userStr) {
       const user = JSON.parse(userStr) as User;
       return { isAuthenticated: true, user };
@@ -19,6 +20,7 @@ export const checkAuthentication = async (): Promise<{
 
     // If not in session storage, try getting user from API
     const response = await authApi.getCurrentUser();
+    
     if (response.status === 200) {
       return { isAuthenticated: true, user: response.data };
     }

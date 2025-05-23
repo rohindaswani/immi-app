@@ -64,14 +64,9 @@ const MainLayout: React.FC = () => {
               My Profile
             </Button>
           ) : (
-            <>
-              <Button color="inherit" onClick={() => navigate('/login')}>
-                Login
-              </Button>
-              <Button color="inherit" onClick={() => navigate('/register')}>
-                Register
-              </Button>
-            </>
+            <Button color="inherit" onClick={() => navigate('/login')}>
+              Sign in with Google
+            </Button>
           )}
         </Toolbar>
       </AppBar>

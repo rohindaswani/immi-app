@@ -7,6 +7,8 @@ import time
 from app.core.config import settings
 from app.core.middleware import setup_middleware
 from app.api.api_v1.api import api_router
+from app.db.postgres import Base, engine, SessionLocal
+from app.db.init_db import init_db
 
 # Configure logging
 logging.basicConfig(
@@ -23,6 +25,27 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
 )
+
+# Startup event to create database tables
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database on startup."""
+    try:
+        logger.info("Creating database tables...")
+        Base.metadata.create_all(bind=engine)
+        
+        # Initialize with seed data
+        db = SessionLocal()
+        try:
+            init_db(db)
+            logger.info("Database initialized successfully")
+        except Exception as e:
+            logger.error(f"Error initializing database: {e}")
+        finally:
+            db.close()
+            
+    except Exception as e:
+        logger.error(f"Error creating database tables: {e}")
 
 # Configure CORS
 app.add_middleware(

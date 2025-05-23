@@ -7,11 +7,11 @@ import AuthProvider from './components/auth/AuthProvider';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
 import AuthSuccess from './pages/auth/AuthSuccess';
 import Dashboard from './pages/dashboard/Dashboard';
 import ProfilesPage from './pages/profiles/ProfilesPage';
 import ProfileDetailPage from './pages/profiles/ProfileDetailPage';
+import { DocumentsPage } from './pages/documents/DocumentsPage';
 import NotFound from './pages/NotFound';
 
 const App: React.FC = () => {
@@ -21,7 +21,6 @@ const App: React.FC = () => {
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
           <Route path="/auth/success" element={<AuthSuccess />} />
           
           {/* Base layout for all routes */}
@@ -34,6 +33,7 @@ const App: React.FC = () => {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="profiles" element={<ProfilesPage />} />
               <Route path="profiles/:profileId" element={<ProfileDetailPage />} />
+              <Route path="documents" element={<DocumentsPage />} />
               {/* Add more protected routes here */}
             </Route>
             
