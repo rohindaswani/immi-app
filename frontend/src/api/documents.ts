@@ -107,6 +107,16 @@ export const documentsApi = {
     return response.data.download_url;
   },
 
+  // Get document preview URL (same as download but will add download=false parameter)
+  getDocumentPreviewUrl: async (documentId: string): Promise<string> => {
+    const response = await apiClient.get(`/documents/${documentId}/download`);
+    const downloadUrl = response.data.download_url;
+    // Append download=false parameter for preview
+    const url = new URL(downloadUrl);
+    url.searchParams.set('download', 'false');
+    return url.toString();
+  },
+
   // Extract data from document using OCR
   extractDocumentData: async (documentId: string): Promise<any> => {
     const response = await apiClient.post(`/documents/${documentId}/extract-data`);
