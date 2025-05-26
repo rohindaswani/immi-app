@@ -109,7 +109,10 @@ export const DocumentList: React.FC<DocumentListProps> = ({ onEditDocument }) =>
   const handleDownload = async (document: DocumentResponse) => {
     try {
       const downloadUrl = await documentsApi.getDocumentDownloadUrl(document.document_id);
-      window.open(downloadUrl, '_blank');
+      // Append download=true parameter to force download
+      const url = new URL(downloadUrl);
+      url.searchParams.set('download', 'true');
+      window.open(url.toString(), '_blank');
     } catch (error) {
       console.error('Download failed:', error);
     }

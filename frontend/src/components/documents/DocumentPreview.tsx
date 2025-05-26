@@ -49,8 +49,8 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     setError(null);
 
     try {
-      const downloadUrl = await documentsApi.getDocumentDownloadUrl(document.document_id);
-      setPreviewUrl(downloadUrl);
+      const previewUrl = await documentsApi.getDocumentPreviewUrl(document.document_id);
+      setPreviewUrl(previewUrl);
     } catch (err) {
       setError('Failed to load document for preview');
       console.error('Preview load error:', err);

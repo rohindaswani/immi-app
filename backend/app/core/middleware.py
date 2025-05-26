@@ -56,7 +56,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Add security headers
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
+        
+        # Only set X-Frame-Options to DENY if not overridden by the endpoint
+        # (file serving endpoints will override this for preview functionality)
+        # Also skip if Content-Security-Policy is already set (indicates file preview)
+        if ("X-Frame-Options" not in response.headers and 
+            "Content-Security-Policy" not in response.headers):
+            response.headers["X-Frame-Options"] = "DENY"
+            
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Cache-Control"] = "no-store"
