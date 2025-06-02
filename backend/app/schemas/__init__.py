@@ -1,1 +1,21 @@
 # Initialize schemas package
+from .timeline import (
+    ImmigrationTimeline,
+    ImmigrationTimelineCreate,
+    ImmigrationTimelineUpdate,
+    TimelineMilestone,
+    TimelineMilestoneCreate,
+    TimelineMilestoneUpdate,
+    TimelineDeadline,
+    TimelineDeadlineCreate,
+    TimelineDeadlineUpdate,
+    TimelineStatusHistory,
+    TimelineStatusHistoryCreate,
+    TimelineStatusHistoryUpdate,
+    TimelineEventType,
+    EventCategory,
+    EventSubtype,
+    PriorityLevel,
+    ImmigrationStatus,
+    AlertFrequency,
+)
