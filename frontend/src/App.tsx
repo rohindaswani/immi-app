@@ -12,6 +12,7 @@ import Dashboard from './pages/dashboard/Dashboard';
 import ProfilesPage from './pages/profiles/ProfilesPage';
 import ProfileDetailPage from './pages/profiles/ProfileDetailPage';
 import { DocumentsPage } from './pages/documents/DocumentsPage';
+import { TimelinePage } from './pages/timeline';
 import NotFound from './pages/NotFound';
 
 const App: React.FC = () => {
@@ -34,6 +35,7 @@ const App: React.FC = () => {
               <Route path="profiles" element={<ProfilesPage />} />
               <Route path="profiles/:profileId" element={<ProfileDetailPage />} />
               <Route path="documents" element={<DocumentsPage />} />
+              <Route path="timeline" element={<TimelinePage />} />
               {/* Add more protected routes here */}
             </Route>
             

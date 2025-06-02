@@ -20,6 +20,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FolderIcon from '@mui/icons-material/Folder';
 import FlightIcon from '@mui/icons-material/Flight';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import HomeIcon from '@mui/icons-material/Home';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import { useNavigate } from 'react-router-dom';
@@ -89,6 +90,12 @@ const MainLayout: React.FC = () => {
                   <FolderIcon />
                 </ListItemIcon>
                 <ListItemText primary="Documents" />
+              </ListItem>
+              <ListItem button onClick={() => handleNavigation('/timeline')}>
+                <ListItemIcon>
+                  <TimelineIcon />
+                </ListItemIcon>
+                <ListItemText primary="Timeline" />
               </ListItem>
               <ListItem button onClick={() => handleNavigation('/travel-history')}>
                 <ListItemIcon>

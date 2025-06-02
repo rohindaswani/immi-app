@@ -300,19 +300,40 @@ class DocumentMetadata(Base):
 
 class ImmigrationTimeline(Base):
     """
-    Immigration timeline model
+    Immigration timeline model - tracks all immigration-related events
     """
     __tablename__ = "immigration_timeline"
 
     event_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     profile_id = Column(UUID(as_uuid=True), ForeignKey("immigration_profiles.profile_id", ondelete="CASCADE"), nullable=False)
-    event_type = Column(String(100), nullable=False)  # visa_approval, entry, exit, status_change, etc.
+    
+    # Event classification
+    event_type = Column(String(50), nullable=False)  # status_change, document, deadline, milestone, travel, etc.
+    event_category = Column(String(50), nullable=False)  # immigration_status, document_management, travel, deadline
+    event_subtype = Column(String(100))  # h1b_approval, visa_expiry, i94_entry, etc.
+    
+    # Event details
     event_date = Column(Date, nullable=False)
+    end_date = Column(Date)  # For events with duration (e.g., valid_until dates)
     event_title = Column(String(255), nullable=False)
     description = Column(Text)
-    reference_id = Column(UUID(as_uuid=True))  # ID of the related record
+    
+    # Status and priority
+    event_status = Column(String(50), default="completed")  # completed, pending, cancelled, upcoming
+    priority = Column(String(20), default="medium")  # low, medium, high, critical
+    is_milestone = Column(Boolean, default=False)  # Mark important events as milestones
+    
+    # Relationships and references
+    immigration_status_id = Column(UUID(as_uuid=True), ForeignKey("immigration_statuses.status_id"))  # For status changes
+    document_id = Column(UUID(as_uuid=True), ForeignKey("document_metadata.document_id"))  # Link to supporting documents
+    travel_record_id = Column(UUID(as_uuid=True), ForeignKey("travel_history.travel_id"))  # Link to travel records
+    
+    # Metadata
+    reference_id = Column(UUID(as_uuid=True))  # Generic reference to other records
     reference_table = Column(String(100))  # Name of the related table
-    supporting_document_id = Column(UUID(as_uuid=True))  # Reference to documents in MongoDB
+    extra_data = Column(JSON)  # Additional flexible data storage
+    
+    # Audit fields
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by = Column(UUID(as_uuid=True))
@@ -320,6 +341,99 @@ class ImmigrationTimeline(Base):
 
     # Relationships
     profile = relationship("ImmigrationProfile", back_populates="timeline_events")
+    immigration_status = relationship("ImmigrationStatus")
+    document = relationship("DocumentMetadata")
+    travel_record = relationship("TravelHistory")
+
+
+class TimelineMilestone(Base):
+    """
+    Predefined milestone templates for different immigration paths
+    """
+    __tablename__ = "timeline_milestones"
+
+    milestone_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    immigration_path = Column(String(50), nullable=False)  # h1b_to_gc, f1_to_h1b, etc.
+    milestone_name = Column(String(255), nullable=False)
+    milestone_description = Column(Text)
+    typical_timeline_days = Column(Integer)  # How many days from start of path
+    is_required = Column(Boolean, default=True)
+    display_order = Column(Integer, default=0)
+    milestone_category = Column(String(50))  # application, approval, deadline, etc.
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class TimelineDeadline(Base):
+    """
+    Upcoming deadlines and reminders
+    """
+    __tablename__ = "timeline_deadlines"
+
+    deadline_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id = Column(UUID(as_uuid=True), ForeignKey("immigration_profiles.profile_id", ondelete="CASCADE"), nullable=False)
+    timeline_event_id = Column(UUID(as_uuid=True), ForeignKey("immigration_timeline.event_id", ondelete="CASCADE"))
+    
+    deadline_type = Column(String(50), nullable=False)  # document_expiry, filing_deadline, etc.
+    deadline_date = Column(Date, nullable=False)
+    deadline_title = Column(String(255), nullable=False)
+    deadline_description = Column(Text)
+    
+    # Alert settings
+    alert_days_before = Column(JSON, default=[30, 14, 7, 1])  # Days before to send alerts
+    is_critical = Column(Boolean, default=False)
+    is_completed = Column(Boolean, default=False)
+    
+    # Status tracking
+    last_alert_sent = Column(DateTime(timezone=True))
+    next_alert_date = Column(Date)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    profile = relationship("ImmigrationProfile")
+    timeline_event = relationship("ImmigrationTimeline")
+
+
+class TimelineStatusHistory(Base):
+    """
+    Track immigration status changes over time
+    """
+    __tablename__ = "timeline_status_history"
+
+    history_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id = Column(UUID(as_uuid=True), ForeignKey("immigration_profiles.profile_id", ondelete="CASCADE"), nullable=False)
+    
+    # Status information
+    from_status_id = Column(UUID(as_uuid=True), ForeignKey("immigration_statuses.status_id"))
+    to_status_id = Column(UUID(as_uuid=True), ForeignKey("immigration_statuses.status_id"), nullable=False)
+    
+    # Change details
+    change_date = Column(Date, nullable=False)
+    effective_date = Column(Date)  # When the status actually becomes effective
+    expiry_date = Column(Date)  # When this status expires
+    
+    # Documentation
+    supporting_document_id = Column(UUID(as_uuid=True), ForeignKey("document_metadata.document_id"))
+    change_reason = Column(String(255))  # Reason for status change
+    notes = Column(Text)
+    
+    # Verification
+    is_verified = Column(Boolean, default=False)
+    verified_by = Column(UUID(as_uuid=True))
+    verified_date = Column(DateTime(timezone=True))
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by = Column(UUID(as_uuid=True))
+    
+    # Relationships
+    profile = relationship("ImmigrationProfile")
+    from_status = relationship("ImmigrationStatus", foreign_keys=[from_status_id])
+    to_status = relationship("ImmigrationStatus", foreign_keys=[to_status_id])
+    supporting_document = relationship("DocumentMetadata")
 
 
 class Notification(Base):
