@@ -15,6 +15,7 @@ import {
   Timeline as TimelineIcon,
   Dashboard as DashboardIcon,
   FilterList as FilterListIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../store';
@@ -22,6 +23,7 @@ import TimelineVisualization from '../../components/timeline/TimelineVisualizati
 import TimelineDashboard from '../../components/timeline/TimelineDashboard';
 import TimelineFilters from '../../components/timeline/TimelineFilters';
 import TimelineEventForm from '../../components/timeline/TimelineEventForm';
+import HistoryTimelineView from '../../components/timeline/HistoryTimelineView';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -122,6 +124,12 @@ const TimelinePage: React.FC = () => {
             id="timeline-tab-2"
             aria-controls="timeline-tabpanel-2"
           />
+          <Tab 
+            icon={<HistoryIcon />} 
+            label="History" 
+            id="timeline-tab-3"
+            aria-controls="timeline-tabpanel-3"
+          />
         </Tabs>
       </Box>
 
@@ -145,6 +153,14 @@ const TimelinePage: React.FC = () => {
           </Grid>
           <Grid item xs={12} lg={8}>
             <TimelineVisualization filters={filters} compact />
+          </Grid>
+        </Grid>
+      </TabPanel>
+      
+      <TabPanel value={currentTab} index={3}>
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <HistoryTimelineView />
           </Grid>
         </Grid>
       </TabPanel>

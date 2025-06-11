@@ -13,6 +13,7 @@ import ProfilesPage from './pages/profiles/ProfilesPage';
 import ProfileDetailPage from './pages/profiles/ProfileDetailPage';
 import { DocumentsPage } from './pages/documents/DocumentsPage';
 import { TimelinePage } from './pages/timeline';
+import { HistoryPage } from './pages/history';
 import NotFound from './pages/NotFound';
 
 const App: React.FC = () => {
@@ -36,6 +37,7 @@ const App: React.FC = () => {
               <Route path="profiles/:profileId" element={<ProfileDetailPage />} />
               <Route path="documents" element={<DocumentsPage />} />
               <Route path="timeline" element={<TimelinePage />} />
+              <Route path="history" element={<HistoryPage />} />
               {/* Add more protected routes here */}
             </Route>
             
