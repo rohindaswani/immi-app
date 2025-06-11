@@ -117,6 +117,7 @@ class ImmigrationProfile(Base):
     documents = relationship("DocumentMetadata", back_populates="profile")
     travel_history = relationship("TravelHistory", back_populates="profile")
     address_history = relationship("AddressHistory", back_populates="profile")
+    employment_history = relationship("EmploymentHistory", back_populates="profile")
     timeline_events = relationship("ImmigrationTimeline", back_populates="profile")
 
 
@@ -226,6 +227,71 @@ class AddressHistory(Base):
     # Relationships
     profile = relationship("ImmigrationProfile", back_populates="address_history")
     address = relationship("Address", back_populates="address_history")
+
+
+class Employer(Base):
+    """
+    Employer model
+    """
+    __tablename__ = "employers"
+
+    employer_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_name = Column(String(255), nullable=False)
+    company_ein = Column(String(20))  # Employer Identification Number
+    company_type = Column(String(100))  # Corporation, LLC, etc.
+    industry = Column(String(100))
+    address_id = Column(UUID(as_uuid=True), ForeignKey("addresses.address_id"))
+    contact_name = Column(String(255))
+    contact_email = Column(String(255))
+    contact_phone = Column(String(50))
+    is_verified = Column(Boolean, default=False)
+    verification_date = Column(Date)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by = Column(UUID(as_uuid=True))
+    updated_by = Column(UUID(as_uuid=True))
+
+    # Relationships
+    address = relationship("Address")
+    employment_history = relationship("EmploymentHistory", back_populates="employer")
+
+
+class EmploymentHistory(Base):
+    """
+    Employment history model
+    """
+    __tablename__ = "employment_history"
+
+    employment_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id = Column(UUID(as_uuid=True), ForeignKey("immigration_profiles.profile_id", ondelete="CASCADE"), nullable=False)
+    employer_id = Column(UUID(as_uuid=True), ForeignKey("employers.employer_id"), nullable=False)
+    job_title = Column(String(255), nullable=False)
+    job_description = Column(Text)
+    department = Column(String(255))
+    employment_type = Column(String(50))  # Full-time, Part-time, Contract, etc.
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date)
+    is_current = Column(Boolean, default=False)
+    salary = Column(Float)
+    salary_frequency = Column(String(20))  # Annual, Monthly, Hourly, etc.
+    working_hours_per_week = Column(Float)
+    work_location_id = Column(UUID(as_uuid=True), ForeignKey("addresses.address_id"))
+    supervisor_name = Column(String(255))
+    supervisor_title = Column(String(255))
+    supervisor_phone = Column(String(50))
+    supervisor_email = Column(String(255))
+    termination_reason = Column(String(255))
+    is_verified = Column(Boolean, default=False)
+    verification_document_id = Column(UUID(as_uuid=True))  # Reference to MongoDB document
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by = Column(UUID(as_uuid=True))
+    updated_by = Column(UUID(as_uuid=True))
+
+    # Relationships
+    profile = relationship("ImmigrationProfile", back_populates="employment_history")
+    employer = relationship("Employer", back_populates="employment_history")
+    work_location = relationship("Address")
 
 
 class TravelHistory(Base):
