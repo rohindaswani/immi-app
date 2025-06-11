@@ -3,6 +3,7 @@ import authReducer from './slices/authSlice';
 import profileReducer from './slices/profileSlice';
 import documentsReducer from './slices/documentsSlice';
 import timelineReducer from './slices/timelineSlice';
+import historyReducer from './slices/historySlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     profiles: profileReducer,
     documents: documentsReducer,
     timeline: timelineReducer,
+    history: historyReducer,
   },
 });
 
