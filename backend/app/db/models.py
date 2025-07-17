@@ -32,6 +32,7 @@ class User(Base):
     settings = relationship("UserSettings", back_populates="user", uselist=False)
     profiles = relationship("ImmigrationProfile", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
+    conversations = relationship("Conversation", back_populates="user")
 
 
 class UserSettings(Base):
@@ -523,3 +524,74 @@ class Notification(Base):
 
     # Relationships
     user = relationship("User", back_populates="notifications")
+
+
+class Conversation(Base):
+    """
+    Chat conversation model
+    """
+    __tablename__ = "conversations"
+
+    conversation_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255))  # Auto-generated or user-defined title
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="conversations")
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+    context_accesses = relationship("ConversationContext", back_populates="conversation", cascade="all, delete-orphan")
+
+
+class Message(Base):
+    """
+    Chat message model
+    """
+    __tablename__ = "messages"
+
+    message_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.conversation_id", ondelete="CASCADE"), nullable=False)
+    content = Column(Text, nullable=False)
+    role = Column(String(20), nullable=False)  # 'user' or 'assistant'
+    
+    # AI-specific metadata
+    model_used = Column(String(100))  # Track which AI model was used
+    tokens_used = Column(Integer)  # Track token usage for cost monitoring
+    response_time_ms = Column(Integer)  # Track response time for performance monitoring
+    
+    # Error handling
+    error_message = Column(Text)  # Store any error messages
+    is_error = Column(Boolean, default=False)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    conversation = relationship("Conversation", back_populates="messages")
+
+
+class ConversationContext(Base):
+    """
+    Track what user data was accessed during a conversation
+    """
+    __tablename__ = "conversation_contexts"
+
+    context_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.conversation_id", ondelete="CASCADE"), nullable=False)
+    message_id = Column(UUID(as_uuid=True), ForeignKey("messages.message_id", ondelete="CASCADE"))
+    
+    # What was accessed
+    context_type = Column(String(50), nullable=False)  # 'profile', 'document', 'travel', 'employment', 'status'
+    entity_id = Column(UUID(as_uuid=True))  # ID of the accessed entity
+    entity_table = Column(String(100))  # Table name of the accessed entity
+    
+    # Additional context
+    access_reason = Column(Text)  # Why this data was accessed
+    data_summary = Column(JSON)  # Summary of what data was used (no sensitive info)
+    
+    accessed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    conversation = relationship("Conversation", back_populates="context_accesses")
+    message = relationship("Message")
