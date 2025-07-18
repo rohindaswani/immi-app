@@ -23,6 +23,7 @@ import FlightIcon from '@mui/icons-material/Flight';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import HomeIcon from '@mui/icons-material/Home';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import ChatIcon from '@mui/icons-material/Chat';
 import { useNavigate } from 'react-router-dom';
 
 import { RootState } from '../../store';
@@ -102,6 +103,12 @@ const MainLayout: React.FC = () => {
                   <FlightIcon />
                 </ListItemIcon>
                 <ListItemText primary="Travel History" />
+              </ListItem>
+              <ListItem button onClick={() => handleNavigation('/chat')}>
+                <ListItemIcon>
+                  <ChatIcon />
+                </ListItemIcon>
+                <ListItemText primary="AI Assistant" />
               </ListItem>
               <Divider />
               <ListItem button onClick={() => handleNavigation('/')}>
