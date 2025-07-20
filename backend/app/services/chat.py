@@ -16,11 +16,15 @@ from app.schemas.chat import (
     SendMessageResponse,
     ConversationContextResponse
 )
+from app.ai.context_service import ContextService
+from app.ai.chat_ai_service import ChatAIService
 
 
 class ChatService:
     def __init__(self, db: Session = Depends(get_db)):
         self.db = db
+        self.context_service = ContextService(db)
+        self.ai_service = ChatAIService(self.context_service)
 
     async def create_conversation(
         self, 
@@ -218,15 +222,24 @@ class ChatService:
         self.db.commit()
         self.db.refresh(user_message)
         
-        # TODO: In PR5, this will call the AI service to get a response
-        # For now, create a placeholder response
+        # Generate AI response with user context
+        ai_response = await self.ai_service.generate_response(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            message_id=user_message.message_id,
+            user_message=message_content
+        )
+        
+        # Create assistant message with AI response
         assistant_message = Message(
             conversation_id=conversation_id,
-            content="I'm here to help with your immigration questions. This feature will be fully implemented in the AI integration phase.",
+            content=ai_response["content"],
             role="assistant",
-            model_used="placeholder",
-            tokens_used=0,
-            response_time_ms=0
+            model_used=ai_response["model_used"],
+            tokens_used=ai_response["tokens_used"],
+            response_time_ms=ai_response["response_time_ms"],
+            is_error=ai_response["is_error"],
+            error_message=ai_response.get("error_message")
         )
         self.db.add(assistant_message)
         
@@ -261,7 +274,7 @@ class ChatService:
                 is_error=assistant_message.is_error,
                 error_message=assistant_message.error_message
             ),
-            contexts_accessed=[]  # Will be populated in PR5
+            contexts_accessed=self._get_contexts_for_message(assistant_message.message_id)
         )
 
     async def delete_conversation(
@@ -286,3 +299,24 @@ class ChatService:
         # Cascade delete will handle messages and context
         self.db.delete(conversation)
         self.db.commit()
+    
+    def _get_contexts_for_message(self, message_id: UUID) -> List[ConversationContextResponse]:
+        """Get context accesses for a specific message"""
+        contexts = self.db.query(ConversationContext).filter(
+            ConversationContext.message_id == message_id
+        ).all()
+        
+        return [
+            ConversationContextResponse(
+                context_id=ctx.context_id,
+                conversation_id=ctx.conversation_id,
+                message_id=ctx.message_id,
+                context_type=ctx.context_type,
+                entity_id=ctx.entity_id,
+                entity_table=ctx.entity_table,
+                access_reason=ctx.access_reason,
+                data_summary=ctx.data_summary,
+                accessed_at=ctx.accessed_at
+            )
+            for ctx in contexts
+        ]
