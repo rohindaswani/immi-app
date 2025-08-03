@@ -63,7 +63,7 @@ app.add_middleware(
 setup_middleware(app)
 
 # Include API router
-app.include_router(api_router, prefix="")
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Health check endpoint
 @app.get("/health")

@@ -12,6 +12,7 @@ import {
   Drawer,
   List,
   ListItem,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
   Divider
@@ -38,6 +39,7 @@ const MainLayout: React.FC = () => {
   };
   
   const handleNavigation = (path: string) => {
+    console.log('MainLayout - Navigating to:', path);
     navigate(path);
     setDrawerOpen(false);
   };
@@ -62,9 +64,21 @@ const MainLayout: React.FC = () => {
             Immigration Advisor
           </Typography>
           {isAuthenticated ? (
-            <Button color="inherit" onClick={() => navigate('/profile')}>
-              My Profile
-            </Button>
+            <>
+              <Button 
+                color="inherit" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  console.log('Chat button clicked');
+                  navigate('/chat');
+                }}
+              >
+                Chat
+              </Button>
+              <Button color="inherit" onClick={() => navigate('/profile')}>
+                My Profile
+              </Button>
+            </>
           ) : (
             <Button color="inherit" onClick={() => navigate('/login')}>
               Sign in with Google
@@ -104,11 +118,13 @@ const MainLayout: React.FC = () => {
                 </ListItemIcon>
                 <ListItemText primary="Travel History" />
               </ListItem>
-              <ListItem button onClick={() => handleNavigation('/chat')}>
-                <ListItemIcon>
-                  <ChatIcon />
-                </ListItemIcon>
-                <ListItemText primary="AI Assistant" />
+              <ListItem disablePadding>
+                <ListItemButton onClick={() => handleNavigation('/chat')}>
+                  <ListItemIcon>
+                    <ChatIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="AI Assistant" />
+                </ListItemButton>
               </ListItem>
               <Divider />
               <ListItem button onClick={() => handleNavigation('/')}>
