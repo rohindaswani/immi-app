@@ -17,10 +17,10 @@ const Login: React.FC = () => {
   const location = useLocation();
   const { error, isAuthenticated } = useSelector((state: RootState) => state.auth);
   
-  // Get the destination from location state, or default to dashboard
-  const from = (location.state as any)?.from || '/dashboard';
+  // Get the location they came from
+  const from = location.state?.from?.pathname || '/dashboard';
   
-  // If already authenticated, redirect to dashboard
+  // If already authenticated, redirect to where they came from or dashboard
   useEffect(() => {
     if (isAuthenticated) {
       navigate(from, { replace: true });

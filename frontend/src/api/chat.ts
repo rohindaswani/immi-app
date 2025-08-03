@@ -11,6 +11,7 @@ import {
 export const chatApi = {
   // Create a new conversation
   createConversation: async (data: ConversationCreate): Promise<ConversationResponse> => {
+    console.log('chatApi - Creating conversation');
     const response = await apiClient.post('/chat/conversations', data);
     return response.data;
   },

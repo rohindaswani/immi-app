@@ -10,14 +10,18 @@ const ProtectedRoute: React.FC = () => {
   const { isAuthenticated, loading } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
   
-  // If still loading authentication status, you could show a loading spinner
+  // If still loading authentication status, show a loading spinner
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div>Loading...</div>
+      </div>
+    );
   }
   
   // If not authenticated, redirect to login with return path
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
   
   // If authenticated, render the child routes

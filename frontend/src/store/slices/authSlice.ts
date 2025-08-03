@@ -30,10 +30,13 @@ const getUserFromSession = (): User | null => {
   return null;
 };
 
+// Check if we already have user data in session
+const sessionUser = getUserFromSession();
+
 const initialState: AuthState = {
-  user: getUserFromSession(),
-  isAuthenticated: !!getUserFromSession(),
-  loading: false,
+  user: sessionUser,
+  isAuthenticated: !!sessionUser,
+  loading: !sessionUser, // Only set loading true if we don't have session data
   error: null,
   authMethod: sessionStorage.getItem('authMethod') as 'google' | 'password' | null
 };
@@ -82,9 +85,12 @@ const authSlice = createSlice({
         sessionStorage.setItem('user', JSON.stringify(state.user));
       }
     },
+    setAuthLoaded: (state) => {
+      state.loading = false;
+    },
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, updateUser } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, updateUser, setAuthLoaded } = authSlice.actions;
 
 export default authSlice.reducer;

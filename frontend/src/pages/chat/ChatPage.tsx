@@ -18,6 +18,8 @@ import {
 } from '../../store/slices/chatSlice';
 
 const ChatPage: React.FC = () => {
+  console.log('ChatPage - Rendering');
+  
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
@@ -28,10 +30,16 @@ const ChatPage: React.FC = () => {
   const currentConversation = useSelector(selectCurrentConversation);
   const loading = useSelector(selectChatLoading);
   const error = useSelector(selectChatError);
+  
+  console.log('ChatPage - State:', { conversations, loading, error });
 
   // Load conversations on mount
   useEffect(() => {
-    dispatch(fetchConversations());
+    console.log('ChatPage - Loading conversations');
+    dispatch(fetchConversations())
+      .unwrap()
+      .then(() => console.log('ChatPage - Conversations loaded'))
+      .catch((err) => console.error('ChatPage - Error loading conversations:', err));
   }, [dispatch]);
 
   // Load conversation when ID changes

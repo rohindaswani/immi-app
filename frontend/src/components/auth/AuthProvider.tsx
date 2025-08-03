@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
 import { RootState } from '../../store';
-import { loginSuccess, logout } from '../../store/slices/authSlice';
+import { loginSuccess, logout, setAuthLoaded } from '../../store/slices/authSlice';
 import { checkAuthentication } from '../../utils/auth';
 
 interface AuthProviderProps {
@@ -33,7 +33,13 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             user,
             authMethod: authMethod || 'password' 
           }));
+        } else {
+          // Mark auth as loaded even if not authenticated
+          dispatch(setAuthLoaded());
         }
+      } else {
+        // If already authenticated, mark as loaded
+        dispatch(setAuthLoaded());
       }
     };
     
