@@ -47,13 +47,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <Paper
-      elevation={0}
+      elevation={1}
       sx={{
-        height: '100%',
+        height: '600px',
         display: 'flex',
         flexDirection: 'column',
         borderRadius: 2,
         overflow: 'hidden',
+        m: 2,
       }}
     >
       <Box
@@ -83,14 +84,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <CircularProgress />
         </Box>
       ) : (
-        <>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <MessageList messages={messages} />
-          <MessageInput 
-            onSendMessage={onSendMessage} 
-            isLoading={isSending}
-            disabled={!conversationId}
-          />
-        </>
+          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+            <MessageInput 
+              onSendMessage={onSendMessage} 
+              isLoading={isSending}
+              disabled={!conversationId}
+            />
+          </Box>
+        </Box>
       )}
     </Paper>
   );

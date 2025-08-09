@@ -1,9 +1,14 @@
 """
-Hardcoded configuration file with no .env dependency
+Configuration file that loads from environment variables
 """
 
+import os
 import secrets
 from typing import List, Optional
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class Settings:
@@ -56,8 +61,8 @@ class Settings:
     DEBUG: bool = True
     
     # SERVICES
-    PINECONE_API_KEY: Optional[str] = None
-    OPENAI_API_KEY: Optional[str] = None
+    PINECONE_API_KEY: Optional[str] = os.getenv("PINECONE_API_KEY")
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     
     # GOOGLE OAUTH
     GOOGLE_CLIENT_ID: Optional[str] = os.getenv("GOOGLE_CLIENT_ID")
