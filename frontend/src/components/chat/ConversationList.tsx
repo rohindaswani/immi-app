@@ -84,7 +84,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
                     primary={
                       conversation.title || 
                       (conversation.last_message 
-                        ? truncateText(conversation.last_message.content, 30)
+                        ? truncateText(conversation.last_message.content, 50)
                         : 'New Conversation')
                     }
                     secondary={

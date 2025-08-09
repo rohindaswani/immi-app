@@ -91,7 +91,7 @@ const ChatPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
       {error && (
         <Alert severity="error" sx={{ m: 2 }}>
           {error}
@@ -122,16 +122,14 @@ const ChatPage: React.FC = () => {
             </Grid>
           )}
           
-          <Grid item xs={12} sm={8} md={9}>
-            <Box sx={{ height: '100%', p: 2 }}>
-              <ChatInterface
-                messages={currentConversation?.messages || []}
-                isLoading={loading.messages}
-                isSending={loading.sending}
-                conversationId={conversationId}
-                onSendMessage={handleSendMessage}
-              />
-            </Box>
+          <Grid item xs={12} sm={8} md={9} sx={{ height: '100%' }}>
+            <ChatInterface
+              messages={currentConversation?.messages || []}
+              isLoading={loading.messages}
+              isSending={loading.sending}
+              conversationId={conversationId}
+              onSendMessage={handleSendMessage}
+            />
           </Grid>
         </Grid>
       </Box>

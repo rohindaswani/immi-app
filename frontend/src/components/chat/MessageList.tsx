@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Box, Typography, Avatar, Paper } from '@mui/material';
 import { format } from 'date-fns';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
@@ -18,8 +18,24 @@ interface MessageListProps {
 }
 
 const MessageList: React.FC<MessageListProps> = ({ messages }) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   return (
-    <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+    <Box 
+      sx={{ 
+        flex: 1, 
+        overflowY: 'auto', 
+        p: 2,
+      }}
+    >
       {messages.map((message) => (
         <Box
           key={message.message_id}
@@ -58,7 +74,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
                   Error: {message.error_message || 'Failed to send message'}
                 </Typography>
               ) : (
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {message.content}
                 </Typography>
               )}
@@ -76,6 +92,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
           </Box>
         </Box>
       ))}
+      <div ref={messagesEndRef} />
     </Box>
   );
 };

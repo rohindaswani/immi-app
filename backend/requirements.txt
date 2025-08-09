@@ -20,3 +20,7 @@ email-validator==2.1.0
 boto3==1.28.78
 fastapi-sso==0.7.0
 itsdangerous==2.1.2
+
+# AI/LLM dependencies
+openai==1.6.1  # For GPT integration
+anthropic==0.8.1  # For Claude integration (optional)
