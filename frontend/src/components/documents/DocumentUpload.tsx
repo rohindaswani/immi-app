@@ -104,14 +104,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [documentType, setDocumentType] = useState('');
-  const [documentSubtype, setDocumentSubtype] = useState('');
-  const [documentNumber, setDocumentNumber] = useState('');
-  const [issuingAuthority, setIssuingAuthority] = useState('');
-  const [relatedImmigrationStrategy, setRelatedImmigrationStrategy] = useState('');
-  const [issueDate, setIssueDate] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState('');
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -173,17 +165,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const addTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags(prev => [...prev, newTag.trim()]);
-      setNewTag('');
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setTags(prev => prev.filter(tag => tag !== tagToRemove));
-  };
-
   const handleSubmit = async () => {
     if (selectedFiles.length === 0 || !documentType) {
       return;
@@ -193,13 +174,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       const documentData: DocumentUploadType = {
         file,
         document_type: documentType,
-        document_subtype: documentSubtype || undefined,
-        document_number: documentNumber || undefined,
-        issuing_authority: issuingAuthority || undefined,
-        related_immigration_type: relatedImmigrationStrategy || undefined,
-        issue_date: issueDate || undefined,
-        expiry_date: expiryDate || undefined,
-        tags: tags.length > 0 ? tags : undefined,
+        // All other fields will be extracted automatically
       };
 
       return dispatch(uploadDocument(documentData));
@@ -217,14 +192,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const handleClose = () => {
     setSelectedFiles([]);
     setDocumentType('');
-    setDocumentSubtype('');
-    setDocumentNumber('');
-    setIssuingAuthority('');
-    setRelatedImmigrationStrategy('');
-    setIssueDate('');
-    setExpiryDate('');
-    setTags([]);
-    setNewTag('');
     onClose();
   };
 
@@ -297,127 +264,27 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           </Box>
         )}
 
-        {/* Document Metadata Form */}
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel>Document Type</InputLabel>
-              <Select
-                value={documentType}
-                onChange={(e) => setDocumentType(e.target.value)}
-                label="Document Type"
-              >
-                {DOCUMENT_TYPES.map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Document Subtype"
-              value={documentSubtype}
-              onChange={(e) => setDocumentSubtype(e.target.value)}
-              placeholder="e.g., Regular, Diplomatic, Service"
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Document Number"
-              value={documentNumber}
-              onChange={(e) => setDocumentNumber(e.target.value)}
-              placeholder="e.g., P123456789"
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Issuing Authority"
-              value={issuingAuthority}
-              onChange={(e) => setIssuingAuthority(e.target.value)}
-              placeholder="e.g., Department of State"
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Related Immigration Type</InputLabel>
-              <Select
-                value={relatedImmigrationStrategy}
-                onChange={(e) => setRelatedImmigrationStrategy(e.target.value)}
-                label="Related Immigration Type"
-              >
-                {IMMIGRATION_TYPES.map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Issue Date"
-              type="date"
-              value={issueDate}
-              onChange={(e) => setIssueDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Expiry Date"
-              type="date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <TextField
-                fullWidth
-                label="Add Tag"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTag();
-                  }
-                }}
-                placeholder="Enter a tag and press Enter"
-              />
-              <Button onClick={addTag} disabled={!newTag.trim()}>
-                Add
-              </Button>
-            </Box>
-            {tags.length > 0 && (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {tags.map((tag) => (
-                  <Chip
-                    key={tag}
-                    label={tag}
-                    onDelete={() => removeTag(tag)}
-                    size="small"
-                  />
-                ))}
-              </Box>
-            )}
-          </Grid>
-        </Grid>
+        {/* Document Type Selection */}
+        <Box sx={{ mb: 3 }}>
+          <FormControl fullWidth required>
+            <InputLabel>Document Type</InputLabel>
+            <Select
+              value={documentType}
+              onChange={(e) => setDocumentType(e.target.value)}
+              label="Document Type"
+            >
+              {DOCUMENT_TYPES.map((type) => (
+                <MenuItem key={type} value={type}>
+                  {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <Alert severity="info" sx={{ mt: 2 }}>
+            📄 All document details (number, dates, issuing authority, etc.) will be automatically extracted from your uploaded document using AI-powered OCR.
+          </Alert>
+        </Box>
       </DialogContent>
 
       <DialogActions>

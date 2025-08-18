@@ -39,6 +39,7 @@ class DocumentResponse(DocumentBase):
     is_verified: bool = False
     upload_date: datetime
     tags: List[str] = []
+    extraction_data: Optional[dict] = None  # Contains extraction results if available
 
 
 class DocumentExtractResponse(BaseModel):

@@ -181,7 +181,42 @@ async def extract_document_data(
     db: Session = Depends(get_db)
 ):
     """
-    Extract data from a document using OCR.
+    Extract data from a document using AI-enhanced OCR.
     """
     document_service = DocumentService(db)
     return await document_service.extract_data(document_id, current_user)
+
+
+@router.put("/{document_id}/apply-extraction", response_model=DocumentResponse)
+async def apply_extracted_data(
+    document_id: str,
+    extraction_data: dict,
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Apply extracted data to update document metadata.
+    """
+    document_service = DocumentService(db)
+    
+    # Convert extraction data to DocumentUpdate format
+    update_data = {}
+    extracted_fields = extraction_data.get('extracted_fields', {})
+    
+    # Map extracted fields to document fields
+    field_mapping = {
+        'document_number': 'document_number',
+        'issuing_authority': 'issuing_authority',
+        'issue_date': 'issue_date',
+        'expiry_date': 'expiry_date'
+    }
+    
+    for extracted_field, document_field in field_mapping.items():
+        if extracted_field in extracted_fields and extracted_fields[extracted_field]:
+            update_data[document_field] = extracted_fields[extracted_field]
+    
+    # Create DocumentUpdate object
+    from app.schemas.document import DocumentUpdate
+    document_update = DocumentUpdate(**update_data)
+    
+    return await document_service.update_document(document_id, current_user, document_update)
