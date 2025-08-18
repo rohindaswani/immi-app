@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ notification_title }} - {{ app_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: {% if related_data.is_critical %}linear-gradient(135deg, #e53e3e 0%, #c53030 100%){% else %}linear-gradient(135deg, #ed8936 0%, #dd6b20 100%){% endif %};
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 300;
+        }
+        .urgency-badge {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+            display: inline-block;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .deadline-card {
+            background: {% if related_data.is_critical %}linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%){% else %}linear-gradient(135deg, #fffaf0 0%, #feebc8 100%){% endif %};
+            border: 2px solid {% if related_data.is_critical %}#e53e3e{% else %}#ed8936{% endif %};
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .deadline-card h2 {
+            color: {% if related_data.is_critical %}#c53030{% else %}#c05621{% endif %};
+            margin-top: 0;
+            font-size: 22px;
+        }
+        .deadline-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .deadline-info-item {
+            text-align: center;
+            margin: 10px;
+        }
+        .deadline-info-item .label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .deadline-info-item .value {
+            font-size: 18px;
+            font-weight: bold;
+            color: {% if related_data.is_critical %}#c53030{% else %}#c05621{% endif %};
+            margin-top: 5px;
+        }
+        .action-required {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 6px;
+        }
+        .action-required h3 {
+            color: #4a5568;
+            margin-top: 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: {% if related_data.is_critical %}#e53e3e{% else %}#ed8936{% endif %};
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+        .cta-button:hover {
+            background-color: {% if related_data.is_critical %}#c53030{% else %}#dd6b20{% endif %};
+        }
+        .footer {
+            background-color: #f7fafc;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            font-size: 14px;
+            color: #718096;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Deadline Alert</h1>
+            <div class="urgency-badge">{{ related_data.urgency_text }}</div>
+        </div>
+        
+        <div class="content">
+            <p>Hello {{ user_name }},</p>
+            
+            <div class="deadline-card">
+                <h2>{{ notification_title }}</h2>
+                
+                <div class="deadline-info">
+                    <div class="deadline-info-item">
+                        <div class="label">Deadline Date</div>
+                        <div class="value">{{ related_data.deadline_date }}</div>
+                    </div>
+                    <div class="deadline-info-item">
+                        <div class="label">Days Remaining</div>
+                        <div class="value">{{ related_data.days_until }} day{% if related_data.days_until != 1 %}s{% endif %}</div>
+                    </div>
+                    <div class="deadline-info-item">
+                        <div class="label">Type</div>
+                        <div class="value">{{ related_data.deadline_type | title }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-required">
+                <h3>⚠️ Action Required</h3>
+                <p>{{ notification_content }}</p>
+                
+                {% if related_data.is_critical %}
+                <p><strong>This is a critical deadline.</strong> Missing this deadline could affect your legal immigration status in the United States.</p>
+                {% endif %}
+                
+                <ul>
+                    <li>Review your timeline and requirements</li>
+                    <li>Gather necessary documents</li>
+                    <li>Consider consulting with an immigration attorney</li>
+                    <li>File or complete required actions before the deadline</li>
+                </ul>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="https://app.immigrationadvisor.com/timeline" class="cta-button">View Timeline & Take Action</a>
+            </div>
+            
+            <p><strong>Important:</strong> This is an automated reminder based on your immigration profile. Please ensure you take appropriate action before the deadline to maintain your legal status.</p>
+            
+            <p>If you need assistance or have questions, please contact our support team immediately.</p>
+            
+            <p>Best regards,<br>
+            The {{ app_name }} Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>This deadline alert was generated automatically based on your immigration timeline.</p>
+            <p>
+                <a href="mailto:{{ support_email }}">Contact Support</a> | 
+                <a href="https://app.immigrationadvisor.com/settings/notifications">Notification Preferences</a>
+            </p>
+            <p style="margin-top: 15px;">
+                © 2024 {{ app_name }}. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

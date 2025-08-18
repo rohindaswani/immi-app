@@ -12,7 +12,8 @@ from app.db.models import (
     EmploymentHistory,
     AddressHistory,
     ImmigrationTimeline,
-    ConversationContext
+    ConversationContext,
+    Message
 )
 
 
@@ -276,3 +277,25 @@ class ContextService:
         )
         self.db.add(context_access)
         self.db.commit()
+    
+    async def get_conversation_history(
+        self, 
+        conversation_id: UUID, 
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """Get recent messages from the conversation for context"""
+        messages = self.db.query(Message).filter(
+            Message.conversation_id == conversation_id
+        ).order_by(desc(Message.created_at)).limit(limit).all()
+        
+        # Reverse to get chronological order (oldest first)
+        messages.reverse()
+        
+        return [
+            {
+                "role": msg.role,
+                "content": msg.content,
+                "created_at": msg.created_at.isoformat()
+            }
+            for msg in messages
+        ]

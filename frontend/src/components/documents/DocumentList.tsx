@@ -37,6 +37,7 @@ import {
 
 import { RootState, AppDispatch } from '../../store';
 import { DocumentPreview } from './DocumentPreview';
+import { ExtractionDataPanel } from './ExtractionDataPanel';
 import {
   fetchDocuments,
   deleteDocument,
@@ -126,6 +127,16 @@ export const DocumentList: React.FC<DocumentListProps> = ({ onEditDocument }) =>
   const handlePreviewClose = () => {
     setPreviewOpen(false);
     setPreviewDocument(null);
+  };
+
+  const handleExtractData = async (documentId: string) => {
+    try {
+      const extractionData = await documentsApi.extractDocumentData(documentId);
+      return extractionData;
+    } catch (error) {
+      console.error('Extraction failed:', error);
+      throw error;
+    }
   };
 
   const handleFilterChange = (filterType: string, value: any) => {
@@ -354,6 +365,15 @@ export const DocumentList: React.FC<DocumentListProps> = ({ onEditDocument }) =>
                       </Stack>
                     </Box>
                   )}
+
+                  {/* Staff Extraction Data Panel */}
+                  <Box mt={2}>
+                    <ExtractionDataPanel
+                      documentId={document.document_id}
+                      onExtract={handleExtractData}
+                      initialData={document.extraction_data}
+                    />
+                  </Box>
                 </CardContent>
 
                 <Box sx={{ p: 1, pt: 0 }}>

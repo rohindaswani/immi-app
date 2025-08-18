@@ -16,6 +16,21 @@ export interface DocumentResponse {
   is_verified: boolean;
   upload_date: string;
   tags: string[];
+  extraction_data?: {
+    extracted_fields?: Record<string, any>;
+    mapped_data?: {
+      document_metadata?: Record<string, any>;
+      profile_updates?: Record<string, any>;
+      warnings?: string[];
+      confidence_info?: Record<string, number>;
+    };
+    confidence_scores?: Record<string, number>;
+    warnings?: string[];
+    extracted_text?: string;
+    document_type_detected?: string;
+    extraction_successful?: boolean;
+    was_extracted?: boolean;
+  };
 }
 
 export interface DocumentUpload {

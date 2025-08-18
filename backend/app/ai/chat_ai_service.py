@@ -75,11 +75,13 @@ class ChatAIService:
             print(f"AI Enabled: {self.config.is_ai_enabled()}")
             
             if self.llm_client:
-                # Build the prompt with context
-                prompt = self._build_contextual_prompt(user_message, user_context)
+                # Get conversation history
+                conversation_history = await self.context_service.get_conversation_history(
+                    conversation_id, limit=10
+                )
                 
-                # Generate response using LLM
-                ai_response = await self._call_llm(prompt, user_message)
+                # Generate response using LLM with conversation history
+                ai_response = await self._call_llm(user_message, user_context, conversation_history)
                 
                 # Calculate metrics
                 response_time_ms = int((time.time() - start_time) * 1000)
@@ -185,18 +187,40 @@ Please provide a helpful and personalized response based on the user's specific 
         
         return full_prompt
     
-    async def _call_llm(self, prompt: str, user_message: str) -> Dict[str, Any]:
+    async def _call_llm(
+        self, 
+        user_message: str, 
+        user_context: Dict[str, Any], 
+        conversation_history: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Call the LLM to generate a response"""
         
         if self.config.AI_PROVIDER == "openai" and self.llm_client:
             try:
                 print(f"Making OpenAI API call with model: {self.config.OPENAI_MODEL}")
+                print(f"Including {len(conversation_history)} messages from conversation history")
+                
+                # Build messages with conversation history
+                messages = [
+                    {"role": "system", "content": self._get_system_prompt_with_context(user_context)}
+                ]
+                
+                # Add conversation history
+                for msg in conversation_history:
+                    messages.append({
+                        "role": msg["role"],
+                        "content": msg["content"]
+                    })
+                
+                # Add current user message
+                messages.append({
+                    "role": "user",
+                    "content": user_message
+                })
+                
                 response = await self.llm_client.chat.completions.create(
                     model=self.config.OPENAI_MODEL,
-                    messages=[
-                        {"role": "system", "content": self._get_system_prompt()},
-                        {"role": "user", "content": prompt}
-                    ],
+                    messages=messages,
                     temperature=self.config.OPENAI_TEMPERATURE,
                     max_tokens=self.config.OPENAI_MAX_TOKENS
                 )
@@ -219,14 +243,29 @@ Please provide a helpful and personalized response based on the user's specific 
                 
         elif self.config.AI_PROVIDER == "anthropic" and self.llm_client:
             try:
+                print(f"Making Anthropic API call with model: {self.config.ANTHROPIC_MODEL}")
+                print(f"Including {len(conversation_history)} messages from conversation history")
+                
+                # Build messages with conversation history for Anthropic
+                messages = []
+                for msg in conversation_history:
+                    messages.append({
+                        "role": msg["role"],
+                        "content": msg["content"]
+                    })
+                
+                # Add current user message
+                messages.append({
+                    "role": "user",
+                    "content": user_message
+                })
+                
                 response = await self.llm_client.messages.create(
                     model=self.config.ANTHROPIC_MODEL,
                     max_tokens=1000,
                     temperature=0.7,
-                    system=self._get_system_prompt(),
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
+                    system=self._get_system_prompt_with_context(user_context),
+                    messages=messages
                 )
                 
                 return {
@@ -418,7 +457,7 @@ What specific deadline or issue are you concerned about?"""
 What specific topic would you like to explore?"""
     
     def _get_system_prompt(self) -> str:
-        """Get system prompt for LLM"""
+        """Get basic system prompt for LLM"""
         return """You are an expert immigration assistant specializing in US immigration law, particularly H1-B visas. 
 You provide accurate, helpful, and personalized guidance based on users' specific situations.
 
@@ -435,6 +474,63 @@ Never:
 - Guarantee any immigration outcomes
 - Share other users' information
 - Make assumptions about undocumented status"""
+    
+    def _get_system_prompt_with_context(self, user_context: Dict[str, Any]) -> str:
+        """Get system prompt with user context for LLM"""
+        base_prompt = self._get_system_prompt()
+        
+        # Add user context to system prompt
+        context_parts = []
+        
+        # Current status
+        if user_context.get("current_status"):
+            status = user_context["current_status"]
+            context_parts.append(
+                f"User's Current Status: {status.get('status_name')} ({status.get('status_code')})"
+            )
+            if status.get("employment_restrictions"):
+                context_parts.append(f"Employment Restrictions: {status['employment_restrictions']}")
+        
+        # Upcoming deadlines
+        if user_context.get("upcoming_deadlines"):
+            context_parts.append("\nUser's Upcoming Deadlines:")
+            for deadline in user_context["upcoming_deadlines"]:
+                context_parts.append(
+                    f"- {deadline['type']}: {deadline['date']} "
+                    f"({deadline['days_until']} days, priority: {deadline['priority']})"
+                )
+        
+        # Recent documents
+        if user_context.get("recent_documents"):
+            expiring_docs = [
+                doc for doc in user_context["recent_documents"] 
+                if doc.get("is_expiring_soon")
+            ]
+            if expiring_docs:
+                context_parts.append("\nUser's Documents Expiring Soon:")
+                for doc in expiring_docs:
+                    context_parts.append(
+                        f"- {doc['document_type']}: expires {doc['expiry_date']}"
+                    )
+        
+        # Employment info
+        if user_context.get("employment"):
+            emp = user_context["employment"]
+            context_parts.append(
+                f"\nUser's Current Employment: {emp.get('job_title')} at {emp.get('employer')} "
+                f"(since {emp.get('start_date')})"
+            )
+        
+        if context_parts:
+            context_string = "\n".join(context_parts)
+            return f"""{base_prompt}
+
+USER CONTEXT:
+{context_string}
+
+Use this context to provide personalized responses. Reference specific deadlines, status, or documents when relevant to the user's question."""
+        
+        return base_prompt
     
     # Additional response methods for other patterns
     def _h1b_transfer_response(self, context: Dict[str, Any]) -> str:
