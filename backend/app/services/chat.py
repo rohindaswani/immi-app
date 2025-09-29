@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -24,7 +24,7 @@ class ChatService:
     def __init__(self, db: Session = Depends(get_db)):
         self.db = db
         self.context_service = ContextService(db)
-        self.ai_service = ChatAIService(self.context_service)
+        self.ai_service = ChatAIService(self.context_service, db)
 
     async def create_conversation(
         self, 
@@ -239,7 +239,8 @@ class ChatService:
             tokens_used=ai_response["tokens_used"],
             response_time_ms=ai_response["response_time_ms"],
             is_error=ai_response["is_error"],
-            error_message=ai_response.get("error_message")
+            error_message=ai_response.get("error_message"),
+            debug_info=ai_response.get("debug_info")  # Store debug info
         )
         self.db.add(assistant_message)
         
@@ -320,3 +321,52 @@ class ChatService:
             )
             for ctx in contexts
         ]
+    
+    async def get_message_debug_info(
+        self, 
+        conversation_id: UUID, 
+        message_id: UUID,
+        user_id: UUID
+    ) -> Dict[str, Any]:
+        """Get debug information for a specific message (staff only)"""
+        
+        # Verify conversation belongs to user
+        conversation = self.db.query(Conversation).filter(
+            and_(
+                Conversation.conversation_id == conversation_id,
+                Conversation.user_id == user_id
+            )
+        ).first()
+        
+        if not conversation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+        
+        # Get the message with debug info
+        message = self.db.query(Message).filter(
+            and_(
+                Message.message_id == message_id,
+                Message.conversation_id == conversation_id
+            )
+        ).first()
+        
+        if not message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Message not found"
+            )
+        
+        # Return debug information
+        return {
+            "message_id": str(message.message_id),
+            "conversation_id": str(message.conversation_id),
+            "role": message.role,
+            "content": message.content,
+            "model_used": message.model_used,
+            "tokens_used": message.tokens_used,
+            "response_time_ms": message.response_time_ms,
+            "created_at": message.created_at,
+            "debug_info": message.debug_info or {}
+        }

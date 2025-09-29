@@ -565,6 +565,9 @@ class Message(Base):
     error_message = Column(Text)  # Store any error messages
     is_error = Column(Boolean, default=False)
     
+    # Debug information (staff only)
+    debug_info = Column(JSON)  # Store system prompt, document context, etc.
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

@@ -5,18 +5,28 @@ import json
 import time
 import re
 from uuid import UUID
+from sqlalchemy.orm import Session
 
 from app.ai.context_service import ContextService
+from app.ai.system_prompt_builder import SystemPromptBuilder
+from app.services.document_context_service import DocumentContextService
 from app.core.ai_config import AIConfig
 
 
 class ChatAIService:
     """Service for AI-powered chat responses with user context"""
     
-    def __init__(self, context_service: ContextService):
+    def __init__(self, context_service: ContextService, db: Session):
         self.context_service = context_service
+        self.document_context_service = DocumentContextService(db)
+        self.prompt_builder = SystemPromptBuilder()
         self.config = AIConfig()
         self.llm_client = None
+        
+        # Debug: Print configuration
+        print(f"[ChatAIService Init] AI Provider: {self.config.AI_PROVIDER}")
+        print(f"[ChatAIService Init] OpenAI API Key present: {bool(self.config.OPENAI_API_KEY)}")
+        print(f"[ChatAIService Init] AI Enabled: {self.config.is_ai_enabled()}")
         
         # Initialize LLM client if configured
         if self.config.is_ai_enabled():
@@ -24,14 +34,22 @@ class ChatAIService:
                 try:
                     from openai import AsyncOpenAI
                     self.llm_client = AsyncOpenAI(api_key=self.config.OPENAI_API_KEY)
-                except ImportError:
-                    print("OpenAI library not installed. Install with: pip install openai")
+                    print(f"[ChatAIService Init] OpenAI client initialized successfully")
+                except ImportError as e:
+                    print(f"[ChatAIService Init] OpenAI library not installed: {e}")
+                except Exception as e:
+                    print(f"[ChatAIService Init] Error initializing OpenAI client: {e}")
             elif self.config.AI_PROVIDER == "anthropic":
                 try:
                     import anthropic
                     self.llm_client = anthropic.AsyncAnthropic(api_key=self.config.ANTHROPIC_API_KEY)
-                except ImportError:
-                    print("Anthropic library not installed. Install with: pip install anthropic")
+                    print(f"[ChatAIService Init] Anthropic client initialized successfully")
+                except ImportError as e:
+                    print(f"[ChatAIService Init] Anthropic library not installed: {e}")
+                except Exception as e:
+                    print(f"[ChatAIService Init] Error initializing Anthropic client: {e}")
+        else:
+            print(f"[ChatAIService Init] AI not enabled - no API key configured")
         
         # Initialize rule-based patterns for common H1-B questions
         self.rule_patterns = self._initialize_rule_patterns()
@@ -46,13 +64,25 @@ class ChatAIService:
         """Generate AI response with user-specific context using hybrid approach"""
         start_time = time.time()
         
+        debug_info = {}  # Store debug information for staff
+        
         try:
-            # Gather user context
+            # Gather user context from chat history
             user_context = self.context_service.gather_user_context(
                 user_id, 
                 conversation_id,
                 message_id
             )
+            
+            # Get comprehensive document context for the user
+            try:
+                document_context = await self.document_context_service.get_user_document_context(str(user_id))
+            except Exception as e:
+                print(f"Warning: Could not fetch document context: {e}")
+                document_context = {"error": "Document context unavailable"}
+            
+            # Store document context in debug info
+            debug_info['document_context'] = document_context
             
             # First, check if this matches any rule-based patterns
             rule_response = self._check_rule_based_response(user_message, user_context)
@@ -61,12 +91,16 @@ class ChatAIService:
                 # Use rule-based response
                 print(f"Using rule-based response for: {user_message[:50]}...")
                 response_time_ms = int((time.time() - start_time) * 1000)
+                debug_info['rule_matched'] = True
+                debug_info['response_type'] = 'rule-based'
+                
                 return {
                     "content": rule_response,
                     "model_used": "rule-based",
                     "tokens_used": 0,
                     "response_time_ms": response_time_ms,
-                    "is_error": False
+                    "is_error": False,
+                    "debug_info": debug_info
                 }
             
             # For complex queries, use GPT if available
@@ -80,8 +114,8 @@ class ChatAIService:
                     conversation_id, limit=10
                 )
                 
-                # Generate response using LLM with conversation history
-                ai_response = await self._call_llm(user_message, user_context, conversation_history)
+                # Generate response using LLM with conversation history and document context
+                ai_response = await self._call_llm(user_message, user_context, conversation_history, document_context)
                 
                 # Calculate metrics
                 response_time_ms = int((time.time() - start_time) * 1000)
@@ -91,7 +125,8 @@ class ChatAIService:
                     "model_used": ai_response.get("model", self.config.get_model_config().get("model")),
                     "tokens_used": ai_response.get("tokens", 0),
                     "response_time_ms": response_time_ms,
-                    "is_error": False
+                    "is_error": False,
+                    "debug_info": ai_response.get("debug_info", debug_info)
                 }
             else:
                 # Fallback to enhanced rule-based response
@@ -191,18 +226,32 @@ Please provide a helpful and personalized response based on the user's specific 
         self, 
         user_message: str, 
         user_context: Dict[str, Any], 
-        conversation_history: List[Dict[str, Any]]
+        conversation_history: List[Dict[str, Any]],
+        document_context: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Call the LLM to generate a response"""
+        
+        # Initialize debug_info for this method
+        debug_info = {}
         
         if self.config.AI_PROVIDER == "openai" and self.llm_client:
             try:
                 print(f"Making OpenAI API call with model: {self.config.OPENAI_MODEL}")
                 print(f"Including {len(conversation_history)} messages from conversation history")
                 
+                # Build comprehensive system prompt with document context
+                # If document context failed, use basic context
+                if "error" in document_context:
+                    system_prompt = self._get_system_prompt_with_context(user_context)
+                else:
+                    system_prompt = self.prompt_builder.build_system_prompt(document_context)
+                
+                # Store system prompt in debug info
+                debug_info['system_prompt'] = system_prompt
+                
                 # Build messages with conversation history
                 messages = [
-                    {"role": "system", "content": self._get_system_prompt_with_context(user_context)}
+                    {"role": "system", "content": system_prompt}
                 ]
                 
                 # Add conversation history
@@ -218,6 +267,11 @@ Please provide a helpful and personalized response based on the user's specific 
                     "content": user_message
                 })
                 
+                # Store full messages in debug info
+                debug_info['messages_sent'] = messages
+                debug_info['total_messages'] = len(messages)
+                debug_info['model'] = self.config.OPENAI_MODEL
+                
                 response = await self.llm_client.chat.completions.create(
                     model=self.config.OPENAI_MODEL,
                     messages=messages,
@@ -226,10 +280,20 @@ Please provide a helpful and personalized response based on the user's specific 
                 )
                 
                 print(f"OpenAI API call successful. Tokens used: {response.usage.total_tokens if response.usage else 'N/A'}")
+                
+                # Store response info in debug
+                debug_info['response'] = {
+                    'content': response.choices[0].message.content,
+                    'model': response.model,
+                    'tokens': response.usage.total_tokens if response.usage else 0,
+                    'raw_response': response.model_dump() if hasattr(response, 'model_dump') else str(response)
+                }
+                
                 return {
                     "content": response.choices[0].message.content,
                     "model": response.model,
-                    "tokens": response.usage.total_tokens if response.usage else 0
+                    "tokens": response.usage.total_tokens if response.usage else 0,
+                    "debug_info": debug_info  # Include debug info
                 }
             except Exception as e:
                 print(f"OpenAI API error: {e}")
@@ -290,38 +354,59 @@ Please provide a helpful and personalized response based on the user's specific 
         }
     
     def _initialize_rule_patterns(self) -> List[Tuple[re.Pattern, str]]:
-        """Initialize rule-based patterns for common H1-B questions"""
+        """Initialize rule-based patterns for SIMPLE questions only"""
         patterns = [
-            # H1-B specific patterns
-            (re.compile(r'(?i)(h1[\s-]?b|h-1b).*(renew|extend|extension)', re.IGNORECASE), 'h1b_renewal'),
-            (re.compile(r'(?i)(h1[\s-]?b|h-1b).*(transfer|change.*employer)', re.IGNORECASE), 'h1b_transfer'),
-            (re.compile(r'(?i)(h1[\s-]?b|h-1b).*(amend|amendment)', re.IGNORECASE), 'h1b_amendment'),
+            # H1-B specific SIMPLE patterns - more restrictive to avoid false positives
+            (re.compile(r'^(?i).*how.*renew.*h1[\s-]?b.*$', re.IGNORECASE), 'h1b_renewal'),
+            (re.compile(r'^(?i).*how.*transfer.*h1[\s-]?b.*$', re.IGNORECASE), 'h1b_transfer'),
+            (re.compile(r'^(?i).*what.*h1[\s-]?b.*amendment.*$', re.IGNORECASE), 'h1b_amendment'),
             
-            # Travel patterns
-            (re.compile(r'(?i)(travel|trip|leave.*country|go.*abroad)', re.IGNORECASE), 'travel'),
-            (re.compile(r'(?i)(re[\s-]?entry|return.*us|come.*back)', re.IGNORECASE), 'reentry'),
+            # Travel SIMPLE patterns
+            (re.compile(r'^(?i).*can.*i.*travel.*$', re.IGNORECASE), 'travel'),
+            (re.compile(r'^(?i).*documents.*for.*travel.*$', re.IGNORECASE), 'travel'),
             
-            # Document patterns
-            (re.compile(r'(?i)(document|paper|form).*(need|require|checklist)', re.IGNORECASE), 'document_checklist'),
-            (re.compile(r'(?i)(i[\s-]?94|i94)', re.IGNORECASE), 'i94'),
-            (re.compile(r'(?i)(i[\s-]?797|i797)', re.IGNORECASE), 'i797'),
+            # Document SIMPLE patterns
+            (re.compile(r'^(?i).*what.*documents.*need.*$', re.IGNORECASE), 'document_checklist'),
+            (re.compile(r'^(?i).*what.*is.*i[\s-]?94.*$', re.IGNORECASE), 'i94'),
+            (re.compile(r'^(?i).*what.*is.*i[\s-]?797.*$', re.IGNORECASE), 'i797'),
             
-            # Employment patterns
-            (re.compile(r'(?i)(work|employ).*(authorization|permit|ead)', re.IGNORECASE), 'work_auth'),
-            (re.compile(r'(?i)(change.*job|new.*job|switch.*employer)', re.IGNORECASE), 'job_change'),
+            # Employment SIMPLE patterns
+            (re.compile(r'^(?i).*what.*is.*work.*authorization.*$', re.IGNORECASE), 'work_auth'),
+            (re.compile(r'^(?i).*how.*change.*job.*h1b.*$', re.IGNORECASE), 'job_change'),
             
-            # Green card patterns
-            (re.compile(r'(?i)(green.*card|permanent.*resident|eb[\s-]?[123])', re.IGNORECASE), 'green_card'),
-            (re.compile(r'(?i)(perm|labor.*certification)', re.IGNORECASE), 'perm'),
+            # Green card SIMPLE patterns - only for basic info requests
+            (re.compile(r'^(?i).*what.*is.*green.*card.*$', re.IGNORECASE), 'green_card'),
+            (re.compile(r'^(?i).*what.*is.*perm.*$', re.IGNORECASE), 'perm'),
             
-            # Status/deadline patterns
-            (re.compile(r'(?i)(status|expire|expir|deadline)', re.IGNORECASE), 'status_check'),
-            (re.compile(r'(?i)(grace.*period|out.*of.*status)', re.IGNORECASE), 'grace_period'),
+            # Status SIMPLE patterns
+            (re.compile(r'^(?i).*check.*my.*status.*$', re.IGNORECASE), 'status_check'),
+            (re.compile(r'^(?i).*what.*is.*grace.*period.*$', re.IGNORECASE), 'grace_period'),
         ]
         return patterns
     
     def _check_rule_based_response(self, message: str, context: Dict[str, Any]) -> Optional[str]:
         """Check if message matches rule-based patterns and return appropriate response"""
+        # Complex indicators that should bypass rules and go to ChatGPT
+        complex_indicators = [
+            'should i', 'should we', 'which is better', 'what are my options',
+            'spouse', 'wife', 'husband', 'compare', 'vs', 'versus', 'or stay',
+            'pros and cons', 'best strategy', 'recommend', 'advice',
+            'multiple', 'both', 'switch to', 'change to', 'convert to'
+        ]
+        
+        message_lower = message.lower()
+        
+        # If message contains complex decision-making indicators, skip rules
+        if any(indicator in message_lower for indicator in complex_indicators):
+            print(f"Complex query detected, skipping rule-based patterns: {message[:100]}...")
+            return None
+        
+        # Check if message is longer than typical simple questions (>100 chars suggests complexity)
+        if len(message) > 100:
+            print(f"Long query detected ({len(message)} chars), skipping rule-based patterns")
+            return None
+        
+        # Check rule patterns only for simple questions
         for pattern, response_type in self.rule_patterns:
             if pattern.search(message):
                 return self._get_rule_response(response_type, context)

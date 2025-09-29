@@ -3,6 +3,7 @@ import { Box, Typography, Avatar, Paper } from '@mui/material';
 import { format } from 'date-fns';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
+import { ChatDebugPanel } from './ChatDebugPanel';
 
 interface Message {
   message_id: string;
@@ -15,9 +16,10 @@ interface Message {
 
 interface MessageListProps {
   messages: Message[];
+  conversationId?: string;
 }
 
-const MessageList: React.FC<MessageListProps> = ({ messages }) => {
+const MessageList: React.FC<MessageListProps> = ({ messages, conversationId }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -37,60 +39,72 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
       }}
     >
       {messages.map((message) => (
-        <Box
-          key={message.message_id}
-          sx={{
-            display: 'flex',
-            justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
-            mb: 2,
-          }}
-        >
+        <React.Fragment key={message.message_id}>
           <Box
             sx={{
               display: 'flex',
-              alignItems: 'flex-start',
-              maxWidth: '70%',
-              flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
+              justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
+              mb: 2,
             }}
           >
-            <Avatar
+            <Box
               sx={{
-                bgcolor: message.role === 'user' ? 'primary.main' : 'secondary.main',
-                mx: 1,
+                display: 'flex',
+                alignItems: 'flex-start',
+                maxWidth: '70%',
+                flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
               }}
             >
-              {message.role === 'user' ? <PersonIcon /> : <SmartToyIcon />}
-            </Avatar>
-            <Paper
-              elevation={1}
-              sx={{
-                p: 2,
-                bgcolor: message.role === 'user' ? 'primary.light' : 'grey.100',
-                color: message.role === 'user' ? 'primary.contrastText' : 'text.primary',
-              }}
-            >
-              {message.is_error ? (
-                <Typography color="error" variant="body2">
-                  Error: {message.error_message || 'Failed to send message'}
-                </Typography>
-              ) : (
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {message.content}
-                </Typography>
-              )}
-              <Typography
-                variant="caption"
+              <Avatar
                 sx={{
-                  display: 'block',
-                  mt: 1,
-                  opacity: 0.8,
+                  bgcolor: message.role === 'user' ? 'primary.main' : 'secondary.main',
+                  mx: 1,
                 }}
               >
-                {format(new Date(message.created_at), 'MMM d, h:mm a')}
-              </Typography>
-            </Paper>
+                {message.role === 'user' ? <PersonIcon /> : <SmartToyIcon />}
+              </Avatar>
+              <Paper
+                elevation={1}
+                sx={{
+                  p: 2,
+                  bgcolor: message.role === 'user' ? 'primary.light' : 'grey.100',
+                  color: message.role === 'user' ? 'primary.contrastText' : 'text.primary',
+                }}
+              >
+                {message.is_error ? (
+                  <Typography color="error" variant="body2">
+                    Error: {message.error_message || 'Failed to send message'}
+                  </Typography>
+                ) : (
+                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {message.content}
+                  </Typography>
+                )}
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: 'block',
+                    mt: 1,
+                    opacity: 0.8,
+                  }}
+                >
+                  {format(new Date(message.created_at), 'MMM d, h:mm a')}
+                </Typography>
+              </Paper>
+            </Box>
           </Box>
-        </Box>
+          
+          {/* Show debug panel for assistant messages */}
+          {message.role === 'assistant' && conversationId && (
+            <Box sx={{ ml: 8, mr: 2 }}>
+              <ChatDebugPanel
+                conversationId={conversationId}
+                messageId={message.message_id}
+                isStaff={true}
+              />
+            </Box>
+          )}
+        </React.Fragment>
       ))}
       <div ref={messagesEndRef} />
     </Box>

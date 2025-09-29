@@ -85,7 +85,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </Box>
       ) : (
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <MessageList messages={messages} />
+          <MessageList messages={messages} conversationId={conversationId} />
           <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
             <MessageInput 
               onSendMessage={onSendMessage} 

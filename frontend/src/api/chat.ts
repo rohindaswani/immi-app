@@ -53,4 +53,10 @@ export const chatApi = {
   deleteConversation: async (conversationId: string): Promise<void> => {
     await apiClient.delete(`/chat/conversations/${conversationId}`);
   },
+
+  // Get debug information for a message (staff only)
+  getMessageDebugInfo: async (conversationId: string, messageId: string): Promise<any> => {
+    const response = await apiClient.get(`/chat/conversations/${conversationId}/messages/${messageId}/debug`);
+    return response.data;
+  },
 };

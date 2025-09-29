@@ -112,4 +112,23 @@ async def delete_conversation(
         conversation_id=conversation_id,
         user_id=UUID(current_user)
     )
+
+
+@router.get("/conversations/{conversation_id}/messages/{message_id}/debug")
+async def get_message_debug_info(
+    conversation_id: UUID,
+    message_id: UUID,
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get debug information for a specific message (staff only).
+    Shows system prompt, document context, and AI request/response.
+    """
+    chat_service = ChatService(db)
+    return await chat_service.get_message_debug_info(
+        conversation_id=conversation_id,
+        message_id=message_id,
+        user_id=UUID(current_user)
+    )
     return None
