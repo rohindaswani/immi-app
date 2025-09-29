@@ -15,6 +15,7 @@ import { DocumentsPage } from './pages/documents/DocumentsPage';
 import { TimelinePage } from './pages/timeline';
 import { HistoryPage } from './pages/history';
 import { ChatPage } from './pages/chat';
+import NotificationsPage from './pages/notifications/NotificationsPage';
 import NotFound from './pages/NotFound';
 
 const App: React.FC = () => {
@@ -41,6 +42,7 @@ const App: React.FC = () => {
               <Route path="history" element={<HistoryPage />} />
               <Route path="chat" element={<ChatPage />} />
               <Route path="chat/:conversationId" element={<ChatPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
               {/* Add more protected routes here */}
             </Route>
             

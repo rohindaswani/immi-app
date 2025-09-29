@@ -329,3 +329,56 @@ class StorageService:
                 status_code=500,
                 detail=f"Error listing files: {str(e)}"
             )
+    
+    async def get_file_content(self, key: str) -> bytes:
+        """
+        Get the content of a file from storage.
+        
+        Args:
+            key: The storage key of the file
+            
+        Returns:
+            File content as bytes
+        """
+        if self.use_local_storage:
+            try:
+                file_path = self.local_storage_path / key
+                if not file_path.exists():
+                    raise HTTPException(
+                        status_code=404,
+                        detail="File not found in local storage"
+                    )
+                
+                with open(file_path, "rb") as f:
+                    return f.read()
+                    
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error reading local file: {str(e)}"
+                )
+        
+        if not self.s3:
+            raise HTTPException(
+                status_code=500, 
+                detail="Storage service not configured properly"
+            )
+            
+        try:
+            response = self.s3.get_object(
+                Bucket=self.bucket_name,
+                Key=key
+            )
+            return response['Body'].read()
+            
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchKey':
+                raise HTTPException(
+                    status_code=404,
+                    detail="File not found"
+                )
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error getting file content: {str(e)}"
+                )

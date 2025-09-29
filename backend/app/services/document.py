@@ -1,12 +1,19 @@
 import uuid
+import logging
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.orm import Session
 
 from app.schemas.document import DocumentCreate, DocumentUpdate, DocumentResponse
 from app.db.models import DocumentMetadata, ImmigrationProfile
 from app.services.storage import StorageService
+from app.services.document_extraction import DocumentExtractionService
+from app.services.ai_document_extraction import AIDocumentExtractionService
+from app.services.document_data_mapper import DocumentDataMapper
+from app.services.simple_document_classifier import SimpleDocumentClassifier
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentService:
@@ -39,6 +46,10 @@ class DocumentService:
     def __init__(self, db: Session):
         self.db = db
         self.storage_service = StorageService()
+        self.extraction_service = DocumentExtractionService()
+        self.ai_extraction_service = AIDocumentExtractionService()
+        self.data_mapper = DocumentDataMapper()
+        self.classifier = SimpleDocumentClassifier()
     
     async def get_documents(
         self, 
@@ -194,6 +205,10 @@ class DocumentService:
         document_id = uuid.uuid4()
         
         try:
+            # Read file content for extraction
+            file_content = await file.read()
+            await file.seek(0)  # Reset file pointer for storage upload
+            
             # Upload to storage using the correct API
             storage_key, storage_url = await self.storage_service.upload_file(
                 file=file,
@@ -206,17 +221,47 @@ class DocumentService:
                 }
             )
             
-            # Create database record
+            # Extract ALL data from document using AI-enhanced extraction
+            extracted_data = await self.ai_extraction_service.extract_with_ai(
+                file_content=file_content,
+                file_type=file.content_type,
+                document_type_hint=document_data.document_type
+            )
+            
+            # Map extracted data to database fields
+            mapped_data = self.data_mapper.map_extracted_data(
+                extracted_data, 
+                extracted_data.document_type or document_data.document_type
+            )
+            
+            # Validate the mapped data
+            validated_data = self.data_mapper.validate_mapping_data(mapped_data)
+            
+            # Use extracted data for ALL fields (no user input)
+            doc_metadata = validated_data.get('document_metadata', {})
+            
+            final_document_number = doc_metadata.get('document_number')
+            final_issuing_authority = doc_metadata.get('issuing_authority')
+            final_document_subtype = doc_metadata.get('document_subtype')
+            final_related_immigration_type = doc_metadata.get('related_immigration_type')
+            
+            # Handle date fields
+            final_issue_date = self._parse_date_field(doc_metadata.get('issue_date'))
+            final_expiry_date = self._parse_date_field(doc_metadata.get('expiry_date'))
+            
+            final_document_type = extracted_data.document_type or document_data.document_type
+            
+            # Create database record with extracted data
             db_document = DocumentMetadata(
                 document_id=document_id,
                 profile_id=profile.profile_id,
-                document_type=document_data.document_type,
-                document_subtype=document_data.document_subtype,
-                document_number=document_data.document_number,
-                issuing_authority=document_data.issuing_authority,
-                related_immigration_type=document_data.related_immigration_type,
-                issue_date=document_data.issue_date,
-                expiry_date=document_data.expiry_date,
+                document_type=final_document_type,
+                document_subtype=final_document_subtype,
+                document_number=final_document_number,
+                issuing_authority=final_issuing_authority,
+                related_immigration_type=final_related_immigration_type,
+                issue_date=final_issue_date,
+                expiry_date=final_expiry_date,
                 mongodb_id="",  # Will be set when we add MongoDB integration
                 s3_key=storage_key,
                 file_name=file.filename,
@@ -228,10 +273,17 @@ class DocumentService:
             )
             
             self.db.add(db_document)
+            
+            # Update profile with extracted data
+            profile_updates = validated_data.get('profile_updates', {})
+            if profile_updates:
+                self._update_profile_from_document(profile, profile_updates, validated_data)
+            
             self.db.commit()
             self.db.refresh(db_document)
             
-            return DocumentResponse(
+            # Create response with extraction metadata
+            response = DocumentResponse(
                 document_id=str(db_document.document_id),
                 user_id=user_id,
                 document_type=db_document.document_type,
@@ -246,8 +298,19 @@ class DocumentService:
                 file_type=db_document.file_type,
                 is_verified=db_document.is_verified,
                 upload_date=db_document.created_at,
-                tags=db_document.tags or []
+                tags=db_document.tags or [],
+                extraction_data={
+                    'extracted_fields': self._serialize_extracted_data(extracted_data),
+                    'mapped_data': validated_data,
+                    'confidence_scores': extracted_data.confidence_scores,
+                    'warnings': extracted_data.warnings + validated_data.get('warnings', []),
+                    'was_extracted': True,
+                    'document_type_detected': extracted_data.document_type,
+                    'extraction_successful': True
+                }
             )
+                
+            return response
             
         except Exception as e:
             # Rollback database changes
@@ -357,7 +420,7 @@ class DocumentService:
         
     async def extract_data(self, document_id: str, user_id: str) -> dict:
         """
-        Extract data from a document using OCR (placeholder for future AI integration).
+        Extract data from a document using AI-enhanced OCR.
         """
         document = self.db.query(DocumentMetadata).filter(
             DocumentMetadata.document_id == document_id
@@ -370,9 +433,155 @@ class DocumentService:
         if str(document.profile.user_id) != user_id:
             raise HTTPException(status_code=403, detail="Access denied")
             
-        # Placeholder implementation - will be enhanced with AI/OCR integration
-        return {
-            "extracted_fields": {},
-            "confidence_score": 0.0,
-            "message": "OCR extraction not yet implemented"
-        }
+        try:
+            # Download document content from storage
+            file_content = await self.storage_service.get_file_content(document.s3_key)
+            
+            # Extract data using AI-enhanced extraction
+            extracted_data = await self.ai_extraction_service.extract_with_ai(
+                file_content=file_content,
+                file_type=document.file_type,
+                document_type_hint=document.document_type
+            )
+            
+            # Map extracted data to database fields
+            mapped_data = self.data_mapper.map_extracted_data(
+                extracted_data, 
+                extracted_data.document_type or document.document_type
+            )
+            
+            # Validate the mapped data
+            validated_data = self.data_mapper.validate_mapping_data(mapped_data)
+            
+            return {
+                "extracted_fields": self._serialize_extracted_data(extracted_data),
+                "mapped_data": validated_data,
+                "confidence_scores": extracted_data.confidence_scores,
+                "warnings": extracted_data.warnings + validated_data.get('warnings', []),
+                "extracted_text": extracted_data.extracted_text,
+                "document_type_detected": extracted_data.document_type,
+                "extraction_successful": True
+            }
+            
+        except Exception as e:
+            logger.error(f"Document extraction failed for document {document_id}: {str(e)}", exc_info=True)
+            return {
+                "extracted_fields": {},
+                "confidence_scores": {},
+                "warnings": [f"Extraction failed: {str(e)}"],
+                "extraction_successful": False,
+                "error": str(e)
+            }
+    
+    def _serialize_extracted_data(self, extracted_data) -> dict:
+        """Convert ExtractedData object to dictionary for JSON serialization"""
+        result = {}
+        
+        # Basic fields
+        for field in ['document_type', 'document_number', 'full_name', 'first_name', 'last_name',
+                     'nationality', 'passport_number', 'issuing_authority', 'place_of_issue', 'gender']:
+            value = getattr(extracted_data, field, None)
+            if value:
+                result[field] = value
+        
+        # Date fields (convert to string)
+        for field in ['date_of_birth', 'issue_date', 'expiry_date', 'admission_date', 
+                     'admit_until_date', 'priority_date', 'validity_from', 'validity_to']:
+            value = getattr(extracted_data, field, None)
+            if value:
+                result[field] = value.isoformat() if hasattr(value, 'isoformat') else str(value)
+        
+        # Document-specific fields
+        for field in ['visa_type', 'visa_class', 'control_number', 'entries', 'annotation',
+                     'i94_number', 'class_of_admission', 'receipt_number', 'notice_type',
+                     'beneficiary_name', 'petitioner_name', 'uscis_number', 'category', 'card_number']:
+            value = getattr(extracted_data, field, None)
+            if value:
+                result[field] = value
+                
+        return result
+    
+    def _parse_date_field(self, date_str: str) -> Optional[date]:
+        """Parse date string to date object"""
+        if not date_str:
+            return None
+        
+        try:
+            if isinstance(date_str, str):
+                return datetime.strptime(date_str, '%Y-%m-%d').date()
+            elif isinstance(date_str, date):
+                return date_str
+        except ValueError:
+            logger.warning(f"Could not parse date: {date_str}")
+        
+        return None
+    
+    def _update_profile_from_document(
+        self, 
+        profile, 
+        profile_updates: Dict[str, Any],
+        validated_data: Dict[str, Any]
+    ) -> None:
+        """Update immigration profile with extracted document data"""
+        
+        for field, value in profile_updates.items():
+            if value is not None:
+                try:
+                    # Handle date fields
+                    if 'date' in field.lower() and isinstance(value, str):
+                        value = self._parse_date_field(value)
+                    
+                    # Only update if the field exists and the value is meaningful
+                    if hasattr(profile, field):
+                        current_value = getattr(profile, field)
+                        
+                        # Only update if current value is None or empty, or if new value is more recent
+                        should_update = False
+                        
+                        if current_value is None:
+                            should_update = True
+                        elif field in ['most_recent_entry_date', 'most_recent_i94_number'] and 'i94' in validated_data.get('document_metadata', {}).get('document_type', ''):
+                            # Always update for more recent I-94 data
+                            should_update = True
+                        elif field.endswith('_expiry_date') and isinstance(value, date) and isinstance(current_value, date):
+                            # Update if new expiry date is later (more recent document)
+                            should_update = value > current_value
+                        elif field in ['passport_number', 'alien_registration_number'] and not current_value:
+                            # Update if we don't have this information yet
+                            should_update = True
+                        
+                        if should_update:
+                            setattr(profile, field, value)
+                            logger.info(f"Updated profile field {field} with value from document")
+                        
+                except Exception as e:
+                    logger.warning(f"Could not update profile field {field}: {str(e)}")
+        
+        # Handle special cases
+        
+        # Priority date updates for I-797
+        if 'priority_date_update' in validated_data:
+            priority_update = validated_data['priority_date_update']
+            current_priority_dates = profile.current_priority_dates or {}
+            
+            # Add new priority date to the JSON field
+            category = priority_update.get('category', 'general')
+            current_priority_dates[category] = {
+                'date': priority_update['date'],
+                'source_document': 'i797',
+                'updated_at': datetime.utcnow().isoformat()
+            }
+            
+            profile.current_priority_dates = current_priority_dates
+            logger.info(f"Updated priority date from I-797: {priority_update['date']}")
+        
+        # Country lookup for passport
+        if 'country_lookup' in validated_data:
+            nationality = validated_data['country_lookup']
+            # Here you would typically do a country lookup
+            # For now, we'll just log it
+            logger.info(f"Need to lookup country for nationality: {nationality}")
+        
+        # Update timestamp
+        profile.updated_at = datetime.utcnow()
+        profile.updated_by = profile.created_by  # Use same user ID

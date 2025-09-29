@@ -25,9 +25,11 @@ import TimelineIcon from '@mui/icons-material/Timeline';
 import HomeIcon from '@mui/icons-material/Home';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import ChatIcon from '@mui/icons-material/Chat';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import { useNavigate } from 'react-router-dom';
 
 import { RootState } from '../../store';
+import NotificationBell from '../notifications/NotificationBell';
 
 const MainLayout: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -65,6 +67,7 @@ const MainLayout: React.FC = () => {
           </Typography>
           {isAuthenticated ? (
             <>
+              <NotificationBell />
               <Button 
                 color="inherit" 
                 onClick={(e) => {
@@ -124,6 +127,14 @@ const MainLayout: React.FC = () => {
                     <ChatIcon />
                   </ListItemIcon>
                   <ListItemText primary="AI Assistant" />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton onClick={() => handleNavigation('/notifications')}>
+                  <ListItemIcon>
+                    <NotificationsIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Notifications" />
                 </ListItemButton>
               </ListItem>
               <Divider />
