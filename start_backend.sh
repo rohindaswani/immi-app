@@ -6,8 +6,8 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-APP_PATH="/Users/rohindaswani/Projects/immigration_app"
-BACKEND_PATH="$APP_PATH/backend"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_PATH="$SCRIPT_DIR/backend"
 
 echo -e "${YELLOW}=== Starting backend for Immigration Advisor Application ===${NC}\n"
 
